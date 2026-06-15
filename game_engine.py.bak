@@ -1,0 +1,950 @@
+
+
+# ============================================================
+# 
+# ============================================================
+
+_CONFIG_FILE = None
+
+def set_config_path(path):
+    """Set config file path."""
+    global _CONFIG_FILE
+    _CONFIG_FILE = Path(path)
+
+def _load_points_config() -> dict:
+    """.
+    
+     points_config.yaml,.
+    """
+    global _CONFIG_FILE
+    config_path = _CONFIG_FILE or (BASE_DIR / "points_config.yaml" if "BASE_DIR" in globals() else None)
+    if config_path and config_path.exists():
+        try:
+            import yaml
+            with open(config_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f)
+        except ImportError:
+            # pyyaml , pip 
+            try:
+                import subprocess
+                subprocess.check_call(["pip", "install", "pyyaml", "-q"])
+                import yaml
+                with open(config_path, "r", encoding="utf-8") as f:
+                    return yaml.safe_load(f)
+            except Exception:
+                return _get_default_config()
+    return _get_default_config()
+
+def _get_default_config() -> dict:
+    """( yaml )."""
+    return {
+        "activities": {
+            "unlock": {"points": 15, "daily_limit": 3},
+            "english_quiz": {"points": 15, "daily_limit": 2},
+            "math_logic": {"points": 15, "daily_limit": 3},
+            "chinese_recite": {"points": 15, "daily_limit": 2},
+            "speech_practice": {"points": 10, "daily_limit": 1},
+            "daily_checkin_morning": {"points": 5, "daily_limit": 1},
+            "daily_checkin_afternoon": {"points": 5, "daily_limit": 1},
+            "daily_checkin_evening": {"points": 10, "daily_limit": 1},
+            "daily_checkin_all": {"points": 15},
+            "exercise": {"base_points": 10, "per_10min": 5, "daily_limit": 3},
+            "clean_room": {"points": 15},
+            "dishes": {"points": 15},
+            "laundry": {"points": 15},
+            "cook": {"points": 15},
+            "sweep": {"points": 15},
+            "news_topic": {"points": 0},
+            "knowledge": {"points": 0},
+            "adventure": {"points": 0},
+            "explain": {"points": 0},
+            "mickey_f1": {"points": 0},
+            "story_song": {"points": 0},
+            "praise": {"points": 0},
+            "proactive": {"points": 10},
+            "copying": {"points": -10},
+            "breaking_rule": {"points": -20},
+        },
+        "streak_bonuses": {3: 5, 7: 10, 14: 15, 30: 20},
+        "multi_bonus_thresholds": {3: 10, 4: 20, 5: 30},
+        "daily_complete": {"points": 30, "required_activities": ["unlock", "english_quiz", "math_logic", "chinese_recite", "speech_practice"]},
+        "penalty_multiplier": {1: 0.8, 2: 0.6, 3: 0.4, 4: 0.2},
+        "redemption": {"record_in_history": True, "minimum_score_for_redeem": 0},
+    }
+
+# 
+CONFIG = _load_points_config()
+
+def get_activity_points(activity_type: str) -> int:
+    """."""
+    act = CONFIG.get("activities", {})
+    entry = act.get(activity_type, {})
+    return entry.get("points", 0)
+
+def get_daily_limit(activity_type: str) -> int:
+    """."""
+    act = CONFIG.get("activities", {})
+    entry = act.get(activity_type, {})
+    return entry.get("daily_limit", 999)
+
+def get_streak_bonuses() -> dict:
+    """."""
+    return CONFIG.get("streak_bonuses", {3: 5, 7: 10, 14: 15, 30: 20})
+
+def get_multi_bonus_thresholds() -> dict:
+    """."""
+    return CONFIG.get("multi_bonus_thresholds", {3: 10, 4: 20, 5: 30})
+
+def get_daily_complete_config() -> dict:
+    """."""
+    return CONFIG.get("daily_complete", {"points": 30, "required_activities": []})
+
+def get_penalty_multiplier(missed_days: int) -> float:
+    """."""
+    pm = CONFIG.get("penalty_multiplier", {})
+    for days in sorted(pm.keys()):
+        if missed_days >= days:
+            return pm[days]
+    return 1.0  # 
+
+
+"""Small intelligence education scoring system -- reward/penalty engine.
+
+Core features:
+1. Multi-dimensional scoring (study/household/positive behavior/quizzes)
+2. Daily task system (required + optional)
+3. Streak reward/penalty (decay on break + increment on streak)
+4. Chore tracking
+5. Daily quiz
+6. Reward shop (score redemption)
+7. Achievement badges
+8. Level system
+"""
+
+import logging
+
+logger = logging.getLogger("xiaozhi_edu")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.WARNING)
+
+# === ???? ===
+# 1. ?????(??/??/????/????)
+# 2. ??????(??+??)
+# 3. ??????(????+????)
+# 4. ??????
+# 5. ??????
+# 6. ????(????)
+# 7. ??????
+# 8. ????
+"""
+
+import json
+import os
+import sys
+from datetime import datetime, date, timedelta
+from enum import Enum
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "game_data.json")
+POINTS_CONFIG_FILE = os.path.join(BASE_DIR, "points_config.yaml")
+
+
+# (points_config.yaml )
+_DEFAULT_POINTS = {
+    "unlock":        {"base": 15,  "max_per_day": 3, "label": ""},
+    "speech_practice":{"base": 20, "max_per_day": 1, "label": ""},
+    "english_quiz":  {"base": 15,  "max_per_day": 2, "label": ""},
+    "math_logic":    {"base": 15,  "max_per_day": 3, "label": ""},
+    "chinese_recite":{"base": 15,  "max_per_day": 2, "label": ""},
+    "mickey_f1":     {"base": 0,   "max_per_day": 99, "label": "F1"},
+    "story_song":    {"base": 0,   "max_per_day": 99, "label": ""},
+    "knowledge":     {"base": 0,   "max_per_day": 99, "label": ""},
+    "explain":       {"base": 0,   "max_per_day": 99, "label": ""},
+    "adventure":     {"base": 0,   "max_per_day": 99, "label": ""},
+    "news_topic":    {"base": 0,   "max_per_day": 99, "label": ""},
+    "daily_quiz":    {"base": 0,   "max_per_day": 99, "label": ""},
+    "daily_checkin_morning":    {"base": 5,  "max_per_day": 1, "label": ""},
+    "daily_checkin_afternoon":  {"base": 5,  "max_per_day": 1, "label": ""},
+    "daily_checkin_evening":    {"base": 10, "max_per_day": 1, "label": ""},
+    "daily_checkin_all":        {"base": 15, "max_per_day": 1, "label": ""},
+}
+
+_DEFAULT_STREAK_BONUSES = get_streak_bonuses()
+_DEFAULT_DAILY_COMPLETE_BONUS = 30
+
+# 
+_loaded_config = None
+
+
+def _load_points_config():
+    """Load points_config.yaml. Return None if not found."""
+    global _loaded_config
+    if _loaded_config is not None:
+        return _loaded_config
+    _loaded_config = {}
+    if not os.path.exists(POINTS_CONFIG_FILE):
+        return None
+    try:
+        import yaml
+        with open(POINTS_CONFIG_FILE, "r", encoding="utf-8") as f:
+            _loaded_config = yaml.safe_load(f)
+        return _loaded_config
+    except ImportError:
+        # PyYAML ,
+        return _manual_parse_yaml(POINTS_CONFIG_FILE)
+    except Exception:
+        return None
+
+
+def _manual_parse_yaml(path):
+    """ YAML ( PyYAML ).
+     config .
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        result = {}
+        current_section = None
+        current_key = None
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if not line.startswith(" ") and line.endswith(":"):
+                current_section = stripped[:-1]
+                current_key = None
+                result[current_section] = {}
+            elif line.startswith("  ") and not line.startswith("    "):
+                parts = stripped.split(":")
+                key = parts[0].strip()
+                val = ":".join(parts[1:]).strip()
+                # 
+                if " #" in val:
+                    val = val[:val.index(" #")].strip()
+                current_key = key
+                if val:
+                    # 
+                    try:
+                        val = int(val)
+                    except (ValueError, TypeError):
+                        try:
+                            val = float(val)
+                        except (ValueError, TypeError):
+                            pass
+                result[current_section][key] = val
+            elif line.startswith("    ") and current_section and current_key:
+                parts = stripped.split(":")
+                key = parts[0].strip()
+                val = ":".join(parts[1:]).strip()
+                if " #" in val:
+                    val = val[:val.index(" #")].strip()
+                if isinstance(result[current_section].get(current_key), dict):
+                    try:
+                        val = int(val)
+                    except (ValueError, TypeError):
+                        try:
+                            val = float(val)
+                        except (ValueError, TypeError):
+                            pass
+                    result[current_section][current_key][key] = val
+        return result
+    except Exception:
+        return {}
+
+
+def _get_points_config():
+    """, yaml ."""
+    cfg = _load_points_config()
+    if cfg is None:
+        return None
+    return cfg.get("activities", {})
+
+
+def _get_streak_bonuses_config():
+    """, yaml ."""
+    cfg = _load_points_config()
+    if cfg is None:
+        return dict(_DEFAULT_STREAK_BONUSES)
+    return cfg.get("streak_bonuses", dict(_DEFAULT_STREAK_BONUSES))
+
+
+def _get_daily_complete_config():
+    """."""
+    cfg = _load_points_config()
+    if cfg is None:
+        return _DEFAULT_DAILY_COMPLETE_BONUS
+    daily = cfg.get("daily_complete", {})
+    return daily.get("points", _DEFAULT_DAILY_COMPLETE_BONUS)
+
+
+def _get_required_activities():
+    """."""
+    cfg = _load_points_config()
+    if cfg is None:
+        return ["unlock", "english_quiz", "math_logic", "chinese_recite", "speech_practice"]
+    daily = cfg.get("daily_complete", {})
+    return daily.get("required_activities", ["unlock", "english_quiz", "math_logic", "chinese_recite", "speech_practice"])
+
+
+# ==========  ==========
+
+# ---  ---
+LEARNING_POINTS = {
+    # ★ 
+    "unlock":        {"base": 15,  "max_per_day": 3, "label": ""},
+    "speech_practice":{"base": 20, "max_per_day": 1, "label": ""},
+    "english_quiz":  {"base": 15,  "max_per_day": 2, "label": ""},
+    "math_logic":    {"base": 15,  "max_per_day": 3, "label": ""},
+    "chinese_recite":{"base": 15,  "max_per_day": 2, "label": ""},
+    # (base=0)
+    "mickey_f1":     {"base": 0,   "max_per_day": 99, "label": "F1"},
+    "story_song":    {"base": 0,   "max_per_day": 99, "label": ""},
+    "knowledge":     {"base": 0,   "max_per_day": 99, "label": ""},
+    "explain":       {"base": 0,   "max_per_day": 99, "label": ""},
+    "adventure":     {"base": 0,   "max_per_day": 99, "label": ""},
+    "news_topic":    {"base": 0,   "max_per_day": 99, "label": ""},
+    "daily_quiz":    {"base": 0,   "max_per_day": 99, "label": ""},
+    # 
+    "daily_checkin_morning":    {"base": 5,  "max_per_day": 1, "label": ""},
+    "daily_checkin_afternoon":  {"base": 5,  "max_per_day": 1, "label": ""},
+    "daily_checkin_evening":    {"base": 10, "max_per_day": 1, "label": ""},
+    "daily_checkin_all":        {"base": 15, "max_per_day": 1, "label": ""},
+}
+
+# ---  ---
+CHORE_POINTS = {
+    "clean_room":    {"base": 15,  "max_per_day": 2, "label": "/"},
+    "dishes":        {"base": 10,  "max_per_day": 2, "label": "/"},
+    "trash":         {"base": 8,   "max_per_day": 3, "label": ""},
+    "laundry":       {"base": 12,  "max_per_day": 2, "label": "/"},
+    "pets_plants":   {"base": 5,   "max_per_day": 2, "label": "/"},
+    "other":         {"base": 10,  "max_per_day": 3, "label": ""},
+}
+
+# ---  ---
+POSITIVE_POINTS = {
+    "proactive":         {"base": 10, "label": "()"},
+    "teach_others":      {"base": 15, "label": "(/)"},
+    "creative":          {"base": 10, "label": "(/)"},
+    "reading":           {"base": 10, "label": "30"},
+    "daily_checkin_morning": {"base": 5, "label": ""},
+    "daily_checkin_afternoon": {"base": 5, "label": ""},
+    "daily_checkin_evening":   {"base": 10, "label": ""},
+    "daily_checkin_all":         {"base": 15, "label": ""},
+}
+
+# --- ( exercise_tracker.py ) ---
+EXERCISE_COMPAT = {
+    "exercise_running":    {"base": 5,  "max_per_day": 40, "label": ""},
+    "exercise_jump_rope":  {"base": 3,  "max_per_day": 30, "label": ""},
+    "exercise_ball":       {"base": 30, "max_per_day": 60, "label": ""},
+    "exercise_swimming":   {"base": 40, "max_per_day": 40, "label": ""},
+    "exercise_cycling":    {"base": 5,  "max_per_day": 30, "label": ""},
+    "exercise_other":      {"base": 15, "max_per_day": 45, "label": ""},
+}
+
+# ---  ---
+PENALTY_POINTS = {
+    "copying":       {"penalty": 10, "label": ""},
+    "lazy":          {"penalty": 5,  "label": ""},
+    "missed_task":   {"penalty": 3,  "label": "()"},
+}
+
+# ---  ---
+DAILY_TASKS = {
+    "daily_study":   {"base": 15,  "label": ""},
+    "daily_speech":  {"base": 20,  "label": ""},
+    "daily_knowledge":{"base": 10, "label": ""},
+    "daily_quiz":    {"base": 10,  "label": ""},
+}
+DAILY_COMPLETE_BONUS = 30  # 
+
+# ---  ---
+STREAK_BONUSES = {
+    3:  10,
+    5:  15,
+    7:  30,
+    14: 50,
+    30: 100,
+    60: 200,
+    90: 300,
+}
+
+# ---  ---
+# N
+STREAK_PENALTY = {"_default": 1.0}  #  get_penalty_multiplier() 
+
+# ---  ---
+LEVEL_THRESHOLDS = [
+    (0,    " 🌱"),
+    (100,  " 📚"),
+    (250,  " 🔍"),
+    (500,  " 🎓"),
+    (800,  " 🌟"),
+    (1200, " 🎤"),
+    (1800, " 🏆"),
+    (2500, " 🚀"),
+    (3500, " 💎"),
+    (5000, " 👑"),
+]
+
+# ---  ---
+ACHIEVEMENTS = [
+    {"score": 50,   "badge": "📖", "name": "",   "desc": "50"},
+    {"score": 100,  "badge": "🎯", "name": "",   "desc": "100"},
+    {"score": 200,  "badge": "🏅", "name": "", "desc": "200"},
+    {"score": 500,  "badge": "⭐", "name": "",   "desc": "500"},
+    {"score": 1000, "badge": "🌟", "name": "",   "desc": "1000"},
+    {"score": 2000, "badge": "🏆", "name": "",   "desc": "2000"},
+    {"score": 3500, "badge": "👑", "name": "",   "desc": "3500"},
+    {"score": 5000, "badge": "💎", "name": "",   "desc": "5000"},
+]
+ACHIEVEMENTS_SPECIAL = [
+    {"chore_count": 10, "badge": "🧹", "name": "", "desc": "10"},
+    {"chore_count": 50, "badge": "🧹🧹", "name": "", "desc": "50"},
+    {"streak": 30,      "badge": "🔥", "name": "",   "desc": "30"},
+    {"streak": 60,      "badge": "🔥🔥", "name": "", "desc": "60"},
+    {"streak": 90,      "badge": "🔥🔥🔥", "name": "", "desc": "90"},
+    {"creative": 20,    "badge": "🎨", "name": "",   "desc": "20"},
+    {"teach_count": 10, "badge": "👨‍🏫", "name": "",     "desc": "10"},
+]
+
+# ---  ---
+REWARD_SHOP = [
+    {"id": "weekend_trip",    "name": "🎡 ",   "cost": 50,  "desc": ""},
+    {"id": "screen_time",     "name": "📱 30",   "cost": 30,  "desc": "/30"},
+    {"id": "buy_book",        "name": "📚 ",   "cost": 40,  "desc": ""},
+    {"id": "favorite_food",   "name": "🍕 ",     "cost": 35,  "desc": ""},
+    {"id": "movie_night",     "name": "🎬 ()","cost": 45,  "desc": ","},
+    {"id": "invite_friend",   "name": "👫 ",   "cost": 60,  "desc": ""},
+    {"id": "toy_budget",      "name": "🧸 ",       "cost": 80,  "desc": "/"},
+    {"id": "family_day",      "name": "🏰 ", "cost": 70,  "desc": "''"},
+    {"id": "park_zoo",        "name": "🦁 /", "cost": 100, "desc": ""},
+    {"id": "cash_convert",    "name": "💰 ",     "cost": 2,   "desc": "2=1,"},
+]
+
+
+# ==========  ==========
+
+def _load():
+    """."""
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    # 
+    return {
+        "total_score": 0,
+        "history": [],
+        "streak_count": 0,
+        "streak_dates": [],
+        "last_play_date": None,
+        "penalty_multiplier": 1.0,  # 
+        "redeemed_rewards": [],     # 
+        "achievements_unlocked": [], # 
+        "chore_count": 0,           # 
+        "creative_count": 0,        # 
+        "teach_count": 0,           # 
+        "exercise_count": 0,        # 
+        "checkin_count": 0,         # 
+    }
+
+def _save(data):
+    """()."""
+    try:
+        tmp_file = DATA_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, DATA_FILE)
+        return True
+    except Exception:
+        return False
+
+
+# ==========  ==========
+
+def record_activity(activity_type, points=None, bonus=0, label=None):
+    """
+    .
+    
+    activity_type: ( "unlock", "clean_room", "proactive")
+    points: (,)
+    bonus: 
+    label: ()
+    """
+    data = _load()
+    today = date.today().isoformat()
+
+    # 1. 
+    activity_info = _get_activity_info(activity_type)
+    if points is None:
+        points = activity_info.get("base", 5)
+    if label is None:
+        label = activity_info.get("label", activity_type)
+
+    # 2. 
+    daily_used = _count_daily_usage(data, today, activity_type)
+    max_per_day = activity_info.get("max_per_day", 99)
+    if daily_used >= max_per_day:
+        return {
+            "error": f"{label} ({max_per_day})",
+            "label": label,
+            "daily_used": daily_used,
+            "max": max_per_day,
+            "penalty_multiplier": data.get("penalty_multiplier", 1.0),
+            "streak_count": data.get("streak_count", 0),
+        }
+
+    # 3. 
+    effective_points = int(points * data.get("penalty_multiplier", 1.0))
+    if data.get("penalty_multiplier", 1.0) < 1.0:
+        penalty_note = f"(:×{data['penalty_multiplier']})"
+    else:
+        penalty_note = ""
+
+    # 4. 
+    new_streak, new_streak_dates, streak_bonus = _calc_streak(data, today)
+
+    # 5. 
+    special_achievements = _check_special_achievements(data)
+
+    # 6. 
+    multi_bonus = _calc_multi_bonus(data, today)
+
+    # 7. 
+    earned = effective_points + bonus + streak_bonus + multi_bonus
+    data["total_score"] += earned
+    if earned < 0:
+        # 
+        data["total_score"] = max(0, data["total_score"])
+
+    # 
+    if activity_type in ["exercise_running", "exercise_jump_rope", "exercise_ball", "exercise_swimming", "exercise_cycling", "exercise_other"]:
+        data["exercise_count"] = data.get("exercise_count", 0) + 1
+    if activity_type in ["daily_checkin_morning", "daily_checkin_afternoon", "daily_checkin_evening"]:
+        data["checkin_count"] = data.get("checkin_count", 0) + 1
+    if activity_type == "creative":
+        data["creative_count"] = data.get("creative_count", 0) + 1
+    if activity_type == "teach_others":
+        data["teach_count"] = data.get("teach_count", 0) + 1
+
+    from datetime import datetime as _dt
+    now_str = _dt.now().strftime("%H:%M:%S")
+
+    # 8. 
+    entry = {
+        "date": today,
+        "time": now_str,
+        "activity": activity_type,
+        "label": label,
+        "base_points": points,
+        "effective_points": effective_points,
+        "streak_bonus": streak_bonus,
+        "multi_bonus": multi_bonus,
+        "bonus": bonus,
+        "total": earned,
+    }
+    data["history"].append(entry)
+
+    # (30)
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    data["history"] = [e for e in data["history"] if e.get("date", "") >= cutoff]
+
+    _save(data)
+    
+    #  multi_bonus 
+    _apply_multi_bonus_marker(data, today, multi_bonus)
+    # 
+    _save(data)
+
+    # 
+    current_level = _get_current_level(data["total_score"])
+    regular_achievements = _check_achievements(data)
+    new_achievements = [a for a in regular_achievements if a["name"] not in [
+        e.get("name") for e in data.get("achievements_unlocked", [])
+    ]]
+
+    return {
+        "activity": activity_type,
+        "label": label,
+        "base_points": points,
+        "effective_points": effective_points,
+        "penalty_note": penalty_note,
+        "bonus": bonus,
+        "streak_bonus": streak_bonus,
+        "multi_bonus": multi_bonus,
+        "earned": earned,
+        "total_score": data["total_score"],
+        "level": current_level,
+        "streak_count": new_streak,
+        "penalty_multiplier": data.get("penalty_multiplier", 1.0),
+        "new_achievements": new_achievements + special_achievements,
+        "daily_used": daily_used + 1,
+        "max_per_day": max_per_day,
+    }
+
+
+def _get_activity_info(activity_type):
+    """."""
+    for category in [LEARNING_POINTS, CHORE_POINTS, POSITIVE_POINTS, EXERCISE_COMPAT]:
+        if activity_type in category:
+            return category[activity_type]
+    return {"base": 5, "label": activity_type, "max_per_day": 1}
+
+
+def _count_daily_usage(data, today, activity_type):
+    """."""
+    count = 0
+    for entry in data.get("history", []):
+        if entry.get("date") == today and entry.get("activity") == activity_type:
+            count += 1
+    return count
+
+
+def _calc_streak(data, today):
+    """."""
+    last = data.get("last_play_date")
+    streak_dates = data.get("streak_dates", [])
+    data["penalty_multiplier"] = data.get("penalty_multiplier", 1.0)
+
+    if last is None:
+        # 
+        data["streak_count"] = 1
+        data["streak_dates"] = [today]
+        data["penalty_multiplier"] = 1.0
+        return 1, [today], 0
+
+    last_date = datetime.strptime(last, "%Y-%m-%d").date()
+    today_date = datetime.strptime(today, "%Y-%m-%d").date()
+    delta = (today_date - last_date).days
+
+    if delta == 0:
+        # 
+        if today not in streak_dates:
+            streak_dates.append(today)
+    elif delta == 1:
+        #  -- 
+        if today not in streak_dates:
+            streak_dates.append(today)
+        data["streak_count"] = len(streak_dates)
+        data["penalty_multiplier"] = 1.0  # 
+
+        # 
+        bonus = 0
+        for milestone, b in sorted(STREAK_BONUSES.items()):
+            if data["streak_count"] >= milestone:
+                bonus = b
+
+        # 
+        _check_streak_achievement(data, data["streak_count"])
+
+        return data["streak_count"], streak_dates, bonus
+    else:
+        # (delta >= 2,)
+        missed_days = delta - 1
+        data["penalty_multiplier"] = STREAK_PENALTY.get(min(missed_days, 7), 0.2)
+        data["streak_count"] = 1
+        streak_dates = [today]
+
+    data["streak_dates"] = streak_dates
+    data["last_play_date"] = today
+    return data["streak_count"], streak_dates, 0
+
+
+def _calc_multi_bonus(data, today):
+    """,.
+    
+     bonus ( history  entry ).
+     0,.
+    """
+    today_types = set()
+    for entry in data.get("history", []):
+        if entry.get("date") == today and entry.get("activity") != "_multi_bonus_applied":
+            today_types.add(entry.get("activity"))
+
+    #  multi_bonus
+    for entry in data.get("history", []):
+        if entry.get("date") == today and entry.get("activity") == "_multi_bonus_applied":
+            return 0  # ,
+
+    type_count = len(today_types)
+    if type_count >= 5:
+        return 30
+    elif type_count >= 4:
+        return 20
+    elif type_count >= 3:
+        return 10
+    return 0
+
+
+def _apply_multi_bonus_marker(data, today, bonus):
+    """ history  entry  multi_bonus ."""
+    if bonus > 0:
+        now_str = __import__('datetime').datetime.now().strftime("%H:%M:%S")
+        data["history"].append({
+            "date": today,
+            "time": now_str,
+            "activity": "_multi_bonus_applied",
+            "label": f"",
+            "base_points": 0,
+            "effective_points": 0,
+            "streak_bonus": 0,
+            "multi_bonus": bonus,
+            "bonus": 0,
+            "total": 0,
+        })
+
+
+def _get_current_level(total):
+    """."""
+    level = LEVEL_THRESHOLDS[0][1]
+    for threshold, name in LEVEL_THRESHOLDS:
+        if total >= threshold:
+            level = name
+    return level
+
+
+def _check_achievements(data):
+    """."""
+    total = data.get("total_score", 0)
+    unlocked_names = set(e.get("name") for e in data.get("achievements_unlocked", []))
+    new = []
+    for ach in ACHIEVEMENTS:
+        if total >= ach["score"] and ach["name"] not in unlocked_names:
+            new.append(ach)
+    return new
+
+
+def _check_special_achievements(data):
+    """(///)."""
+    new = []
+    unlocked_names = set(e.get("name") for e in data.get("achievements_unlocked", []))
+
+    for ach in ACHIEVEMENTS_SPECIAL:
+        if ach["name"] in unlocked_names:
+            continue
+        if ach.get("chore_count") and data.get("chore_count", 0) >= ach["chore_count"]:
+            new.append(ach)
+        if ach.get("streak") and data.get("streak_count", 0) >= ach["streak"]:
+            new.append(ach)
+        if ach.get("creative") and data.get("creative_count", 0) >= ach["creative"]:
+            new.append(ach)
+        if ach.get("teach_count") and data.get("teach_count", 0) >= ach["teach_count"]:
+            new.append(ach)
+
+    return new
+
+
+def _check_streak_achievement(data, count):
+    """."""
+    for ach in ACHIEVEMENTS_SPECIAL:
+        if ach.get("streak") and count >= ach["streak"]:
+            if ach["name"] not in [e.get("name") for e in data.get("achievements_unlocked", [])]:
+                data.setdefault("achievements_unlocked", []).append({
+                    "name": ach["name"], "badge": ach["badge"], "desc": ach["desc"]
+                })
+
+
+# ==========  ==========
+
+def record_chore(chore_type, label=None):
+    """."""
+    info = CHORE_POINTS.get(chore_type, {"base": 10, "label": "", "max_per_day": 3})
+    if label is None:
+        label = info["label"]
+
+    data = _load()
+    data["chore_count"] = data.get("chore_count", 0) + 1
+    _save(data)
+
+    result = record_activity(chore_type, label=label)
+    result["category"] = ""
+    return result
+
+
+# ==========  ==========
+
+def record_positive(action_type):
+    """."""
+    info = POSITIVE_POINTS.get(action_type, {"base": 5, "label": action_type})
+    result = record_activity(action_type, label=info["label"], bonus=0)
+    result["category"] = ""
+    return result
+
+
+# ==========  ==========
+
+def record_penalty(penalty_type, label=None):
+    """."""
+    info = PENALTY_POINTS.get(penalty_type, {"penalty": 5, "label": penalty_type})
+    if label is None:
+        label = info["label"]
+
+    data = _load()
+    today = date.today().isoformat()
+
+    # 
+    last = data.get("last_play_date")
+    data["penalty_multiplier"] = data.get("penalty_multiplier", 1.0)
+    if last:
+        last_date = datetime.strptime(last, "%Y-%m-%d").date()
+        today_date = datetime.strptime(today, "%Y-%m-%d").date()
+        delta = (today_date - last_date).days
+        if delta >= 2:
+            data["penalty_multiplier"] = STREAK_PENALTY.get(delta, 0.2)
+        elif delta == 1:
+            data["penalty_multiplier"] = 1.0
+
+    penalty = -info["penalty"]
+    data["total_score"] = max(0, data["total_score"] + penalty)
+    entry = {
+        "date": today,
+        "activity": penalty_type,
+        "label": label,
+        "total": penalty,
+        "reason": "",
+    }
+    data["history"].append(entry)
+    data["last_play_date"] = today
+    _save(data)
+
+    return {
+        "activity": penalty_type,
+        "label": label,
+        "penalty": penalty,
+        "total_score": data["total_score"],
+        "level": _get_current_level(data["total_score"]),
+        "penalty_multiplier": data["penalty_multiplier"],
+    }
+
+
+# ==========  ==========
+
+def get_daily_tasks():
+    """."""
+    data = _load()
+    today = date.today().isoformat()
+    tasks = []
+    for task_id, task_info in DAILY_TASKS.items():
+        # 
+        completed = False
+        for entry in data.get("history", []):
+            if entry.get("date") == today and entry.get("activity") == task_id:
+                completed = True
+                break
+
+        # 
+        if task_id == "daily_study":
+            for entry in data.get("history", []):
+                if entry.get("date") == today and entry.get("activity") in ["unlock", "english_quiz", "chinese_recite"]:
+                    completed = True
+                    break
+        elif task_id == "daily_speech":
+            for entry in data.get("history", []):
+                if entry.get("date") == today and entry.get("activity") == "speech_practice":
+                    completed = True
+                    break
+        elif task_id == "daily_knowledge":
+            for entry in data.get("history", []):
+                if entry.get("date") == today and entry.get("activity") in ["knowledge", "explain"]:
+                    completed = True
+                    break
+        elif task_id == "daily_quiz":
+            # 
+            pass
+
+        tasks.append({
+            "id": task_id,
+            "label": task_info["label"],
+            "points": task_info["base"],
+            "completed": completed,
+        })
+
+    # 
+    all_completed = all(t["completed"] for t in tasks)
+    if all_completed and not data.get("daily_bonus_claimed", False):
+        # (, get_daily_tasks )
+        data["daily_bonus_claimed"] = True
+        _save(data)
+        result = record_activity("daily_complete", points=DAILY_COMPLETE_BONUS, label="")
+        result["category_bonus"] = f" +{DAILY_COMPLETE_BONUS}"
+        return {"tasks": tasks, "completed": True, "daily_bonus_claimed": True, "category_bonus": result}
+
+    return {"tasks": tasks, "completed": all_completed, "daily_bonus_claimed": data.get("daily_bonus_claimed", False)}
+
+
+# ==========  ==========
+
+
+def redeem_reward(reward_id: str) -> dict:
+    """, total_score .
+    
+    Args:
+        reward_id:  ID
+    
+    Returns:
+        {"status": "ok", "remaining_score": int, "reward_name": str}
+         {"status": "error", "message": str}
+    """
+    data = _load()
+    shop = rs.get_shop()
+    
+    # 
+    item = None
+    for r in shop:
+        if r.get("id") == reward_id:
+            item = r
+            break
+    
+    if not item:
+        return {"status": "error", "message": f": {reward_id}"}
+    
+    cost = item.get("cost", 0)
+    name = item.get("name", reward_id)
+    
+    # 
+    if data["total_score"] < cost:
+        return {"status": "error", "message": f":  {cost} , {data['total_score']} "}
+    
+    # 
+    data["total_score"] -= cost
+    earned = -cost  # 
+    
+    # 
+    now_str = datetime.now().strftime("%H:%M:%S")
+    entry = {
+        "date": date.today().isoformat(),
+        "time": now_str,
+        "activity": f"redeemed_{reward_id}",
+        "label": f": {name}",
+        "base_points": -cost,
+        "effective_points": -cost,
+        "streak_bonus": 0,
+        "multi_bonus": 0,
+        "bonus": 0,
+        "total": earned,
+        "has_real_time": True,
+        "migration_plan": ""
+    }
+    data["history"].append(entry)
+    
+    # 
+    _save_data(data)
+    
+    # (,)
+    # 
+    
+    return {
+        "status": "ok",
+        "remaining_score": data["total_score"],
+        "reward_name": name,
+        "cost": cost,
+        "tts": th.redeem_tts(name, cost) if hasattr(th, 'redeem_tts') else f" {name}! {cost} !"
+    }

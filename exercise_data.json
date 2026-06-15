@@ -1,0 +1,29 @@
+{
+  "history": [
+    {
+      "date": "2026-06-14",
+      "exercise": "other",
+      "label": "其他运动",
+      "duration_minutes": 0,
+      "count": 0,
+      "earned_points": 3,
+      "streak_bonus": 0,
+      "total": 3
+    }
+  ],
+  "exercise_streak": 1,
+  "exercise_streak_dates": [
+    "2026-06-14"
+  ],
+  "last_exercise_date": null,
+  "total_sessions": 1,
+  "total_minutes": 15,
+  "exercise_achievements_unlocked": [],
+  "daily_checkin_completed": false,
+  "running_count": 0,
+  "jump_rope_count": 0,
+  "ball_count": 0,
+  "swimming_count": 0,
+  "cycling_count": 0,
+  "other_count": 1
+}

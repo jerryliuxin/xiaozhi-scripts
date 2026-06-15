@@ -1,0 +1,36 @@
+{
+  "questions": [
+    {
+      "question": "为什么天会黑？",
+      "answer": "",
+      "topic": "explain_to_child",
+      "date": "2026-06-06",
+      "time": "12:04"
+    },
+    {
+      "question": "为什么天会黑？",
+      "answer": "",
+      "topic": "explain_to_child",
+      "date": "2026-06-07",
+      "time": "20:10"
+    },
+    {
+      "question": "为什么天会黑",
+      "answer": "",
+      "topic": "explain_to_child",
+      "date": "2026-06-08",
+      "time": "10:49"
+    },
+    {
+      "question": "为什么天会黑",
+      "answer": "",
+      "topic": "explain_to_child",
+      "date": "2026-06-08",
+      "time": "10:55"
+    }
+  ],
+  "last_question": "为什么天会黑",
+  "last_answer": "",
+  "last_topic": "explain_to_child",
+  "last_date": "2026-06-08"
+}

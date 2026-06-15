@@ -1,0 +1,49 @@
+{
+  "history": [
+    {
+      "date": "2026-06-07",
+      "exercise": "other",
+      "label": "其他运动",
+      "duration_minutes": 0,
+      "count": 0,
+      "earned_points": 3,
+      "streak_bonus": 0,
+      "total": 3
+    },
+    {
+      "date": "2026-06-08",
+      "exercise": "running",
+      "label": "跑步",
+      "duration_minutes": 10,
+      "count": 0,
+      "earned_points": 10,
+      "streak_bonus": 0,
+      "total": 10
+    },
+    {
+      "date": "2026-06-08",
+      "exercise": "running",
+      "label": "跑步",
+      "duration_minutes": 30,
+      "count": 0,
+      "earned_points": 30,
+      "streak_bonus": 0,
+      "total": 30
+    }
+  ],
+  "exercise_streak": 1,
+  "exercise_streak_dates": [
+    "2026-06-08"
+  ],
+  "last_exercise_date": null,
+  "total_sessions": 6,
+  "total_minutes": 130,
+  "exercise_achievements_unlocked": [],
+  "daily_checkin_completed": false,
+  "running_count": 4,
+  "jump_rope_count": 0,
+  "ball_count": 0,
+  "swimming_count": 1,
+  "cycling_count": 0,
+  "other_count": 1
+}

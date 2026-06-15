@@ -1,0 +1,105 @@
+# 小智教育积分系统 - 规则配置文件
+# 所有积分规则、分值、每日上限、连胜奖励曲线均在此配置
+
+activities:
+  # === 核心学习模块（5个） ===
+  unlock:
+    points: 15
+    daily_limit: 3
+  english_quiz:
+    points: 15
+    daily_limit: 2
+  math_logic:
+    points: 15
+    daily_limit: 3
+  chinese_recite:
+    points: 15
+    daily_limit: 2
+  speech_practice:
+    points: 10
+    daily_limit: 1
+  
+  # === 打卡模块 ===
+  daily_checkin_morning:
+    points: 5
+    daily_limit: 1
+  daily_checkin_afternoon:
+    points: 5
+    daily_limit: 1
+  daily_checkin_evening:
+    points: 10
+    daily_limit: 1
+  daily_checkin_all:
+    points: 15  # 全打卡额外奖励
+  
+  # === 运动模块 ===
+  exercise:
+    base_points: 10
+    per_10min: 5
+    daily_limit: 3
+  
+  # === 家务模块 ===
+  clean_room:
+    points: 15
+  dishes:
+    points: 15
+  laundry:
+    points: 15
+  cook:
+    points: 15
+  sweep:
+    points: 15
+  
+  # === 记录活动（零分，只记录不加分） ===
+  news_topic:
+    points: 0
+  knowledge:
+    points: 0
+  adventure:
+    points: 0
+  explain:
+    points: 0
+  mickey_f1:
+    points: 0
+  story_song:
+    points: 0
+  praise:
+    points: 0
+  proactive:
+    points: 10  # 主动学习行为奖励
+  
+  # === 惩罚 ===
+  copying:
+    points: -10
+  breaking_rule:
+    points: -20
+
+# 连胜里程碑奖励（达到天数时一次性奖励）
+streak_bonuses:
+  3: 5
+  7: 10
+  14: 15
+  30: 20
+
+# 多活动类型奖励（同日完成多种活动）
+multi_bonus_thresholds:
+  3: 10
+  4: 20
+  5: 30
+
+# 每日任务全完成奖励
+daily_complete:
+  points: 30
+  required_activities: [unlock, english_quiz, math_logic, chinese_recite, speech_practice]
+
+# 断联惩罚倍率
+penalty_multiplier:
+  1: 0.8
+  2: 0.6
+  3: 0.4
+  4: 0.2
+
+# 兑换记录
+redemption:
+  record_in_history: true
+  minimum_score_for_redeem: 0  # 兑换后不能为负

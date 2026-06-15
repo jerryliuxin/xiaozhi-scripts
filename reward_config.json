@@ -1,0 +1,55 @@
+{
+  "password": "daac8c9053904497",
+  "custom_rewards": [
+    {
+      "id": "custom_1",
+      "name": "自定义奖励",
+      "cost": 20,
+      "desc": "家长自定义奖励",
+      "category": "其他",
+      "parent_confirm": true,
+      "is_custom": true
+    },
+    {
+      "id": "custom_2",
+      "name": "自定义奖励",
+      "cost": 20,
+      "desc": "家长自定义奖励",
+      "category": "其他",
+      "parent_confirm": true,
+      "is_custom": true
+    },
+    {
+      "id": "custom_3",
+      "name": "自定义奖励",
+      "cost": 20,
+      "desc": "家长自定义奖励",
+      "category": "其他",
+      "parent_confirm": true,
+      "is_custom": true
+    }
+  ],
+  "rules": {
+    "max_penalty_multiplier": 1.0,
+    "daily_limit": {
+      "unlock": 3,
+      "english_quiz": 2,
+      "math_logic": 3,
+      "chinese_recite": 2,
+      "speech_practice": 1
+    },
+    "require_parent_confirm_for": [
+      "weekend_trip",
+      "screen_time",
+      "buy_book",
+      "favorite_food",
+      "movie_night",
+      "invite_friend",
+      "toy_budget",
+      "family_day",
+      "park_zoo"
+    ],
+    "auto_redemption_threshold": 10
+  },
+  "parent_notified_today": "2026-06-09"
+}

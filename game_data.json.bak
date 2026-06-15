@@ -1,0 +1,303 @@
+{
+  "history": [
+    {
+      "date": "2026-06-14",
+      "activity": "test_cli",
+      "base": 4,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 4,
+      "time": "2026-06-14T11:42:54.661666",
+      "label": "CLI测试"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:01:50.473811"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:02:47.161046"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:06:17.109911"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:06:17.199874"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "_multi_bonus_applied",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 0,
+      "time": "2026-06-14T12:06:17.923408"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 10,
+      "total": 10,
+      "time": "2026-06-14T12:06:17.923414"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 20,
+      "total": 15,
+      "time": "2026-06-14T12:06:18.013216",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:09:03.775600"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:09:03.864561"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "exercise_other",
+      "base": 0,
+      "bonus": 3,
+      "multi_bonus": 30,
+      "total": 33,
+      "time": "2026-06-14T12:09:04.168135",
+      "label": "运动-其他运动"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:09:04.604511"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 25,
+      "time": "2026-06-14T12:09:04.693318",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:09:05.147428"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:14:15.331895"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:14:15.420060"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "chore",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 40,
+      "time": "2026-06-14T12:14:16.101262",
+      "label": "other",
+      "extra": {
+        "chore_type": "other"
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:14:16.189312"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 25,
+      "time": "2026-06-14T12:14:16.282766",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:14:16.660666"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:16:08.774427"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 45,
+      "time": "2026-06-14T12:16:08.864712"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "chore",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 40,
+      "time": "2026-06-14T12:16:09.518830",
+      "label": "other",
+      "extra": {
+        "chore_type": "other"
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:16:09.609630"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 25,
+      "time": "2026-06-14T12:16:09.699737",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "daily_complete",
+      "base": 30,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 60,
+      "time": "2026-06-14T12:16:09.941197",
+      "label": "每日任务全完成"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:16:10.103468"
+    },
+    {
+      "date": "2026-06-15",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-15T16:38:31.562569"
+    },
+    {
+      "date": "2026-06-15",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-15T19:12:24.051138",
+      "label": "测试时间记录"
+    }
+  ],
+  "total_score": 802,
+  "streak": {
+    "streak_count": 2,
+    "streak_dates": [
+      "2026-06-14",
+      "2026-06-15"
+    ]
+  },
+  "unlocked_achievements": [
+    "first_unlock",
+    "first_redeem",
+    "score_100",
+    "score_500"
+  ]
+}
