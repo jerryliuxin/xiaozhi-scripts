@@ -298,6 +298,8 @@ def record_activity(activity_type, points=None, bonus=0, label="",
     # 检查成就
     data = _check_achievements(data)
 
+    data["level"] = _get_current_level(data.get("total_score", 0))
+    data["score"] = data.get("total_score", 0)
     _save(data)
     # 同时写入数据库
     try:

@@ -90,6 +90,20 @@ def generate_daily_challenge():
 def get_today_progress():
     """获取今日挑战进度（从 game_engine 权威数据源）。"""
     daily = game_engine.get_daily_tasks()
+    if isinstance(daily, list):
+        tasks = daily
+        # Derive completed status: all required tasks done?
+        required_ids = {"unlock", "english_quiz", "math_logic", "chinese_recite", "speech_practice"}
+        done_ids = set()
+        for t in tasks:
+            if isinstance(t, dict):
+                done_ids.add(t.get("id", ""))
+        completed = required_ids.issubset(done_ids)
+        return {
+            "tasks": tasks,
+            "completed": completed,
+            "daily_bonus_claimed": False,
+        }
     return {
         "tasks": daily.get("tasks", []),
         "completed": daily.get("completed", False),

@@ -60,8 +60,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 10,
-      "total": 10,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:06:17.923414"
     },
     {
@@ -69,8 +69,8 @@
       "activity": "penalty",
       "base": -5,
       "bonus": 0,
-      "multi_bonus": 20,
-      "total": 15,
+      "multi_bonus": 0,
+      "total": -5,
       "time": "2026-06-14T12:06:18.013216",
       "extra": {
         "penalty_type": ""
@@ -109,8 +109,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:09:04.604511"
     },
     {
@@ -118,8 +118,8 @@
       "activity": "penalty",
       "base": -5,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 25,
+      "multi_bonus": 0,
+      "total": -5,
       "time": "2026-06-14T12:09:04.693318",
       "extra": {
         "penalty_type": ""
@@ -130,8 +130,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:09:05.147428"
     },
     {
@@ -170,8 +170,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:14:16.189312"
     },
     {
@@ -179,8 +179,8 @@
       "activity": "penalty",
       "base": -5,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 25,
+      "multi_bonus": 0,
+      "total": -5,
       "time": "2026-06-14T12:14:16.282766",
       "extra": {
         "penalty_type": ""
@@ -191,8 +191,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:14:16.660666"
     },
     {
@@ -231,8 +231,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:16:09.609630"
     },
     {
@@ -240,8 +240,8 @@
       "activity": "penalty",
       "base": -5,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 25,
+      "multi_bonus": 0,
+      "total": -5,
       "time": "2026-06-14T12:16:09.699737",
       "extra": {
         "penalty_type": ""
@@ -262,8 +262,8 @@
       "activity": "praise",
       "base": 0,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 30,
+      "multi_bonus": 0,
+      "total": 0,
       "time": "2026-06-14T12:16:10.103468"
     },
     {
@@ -276,7 +276,7 @@
       "time": "2026-06-15T16:38:31.562569"
     }
   ],
-  "total_score": 787,
+  "total_score": 487,
   "streak": {
     "streak_count": 2,
     "streak_dates": [
@@ -289,5 +289,7 @@
     "first_redeem",
     "score_100",
     "score_500"
-  ]
+  ],
+  "level": "知识探索家",
+  "score": 487
 }

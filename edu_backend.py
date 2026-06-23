@@ -128,7 +128,7 @@ def _auto_record(action, bonus=0):
         if action == 'unlock_english':
             activity_type = 'unlock'
         elif action == 'speech_practice':
-            activity_type = 'speech'
+            activity_type = 'speech_practice'
         else:
             activity_type = action
         
