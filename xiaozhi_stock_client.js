@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 const { execSync } = require('child_process');
 const path = require('path');
 
-const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc3NjIyNDI5NSwiZXhwIjoxODA3NzgxODk1fQ.tI3mdf3mDns_reSWrQYHNWsyjaYhrLKV-QnId-rACX97D2lsbkjS0jEXdHl5SKQe9ZPmX7viJGzzJTYIoEpYOQ';
+const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4MjI3MTgzNCwiZXhwIjoxODEzODI5NDM0fQ.kLWPW06HCzC0pFMlDFBvJvycWFIaLd_DTTNVSqQRPuMTOokcBC-pfXevWM50we1rr_aJi9fvkvSDI76yyOe8_w';
 const ENDPOINT = 'wss://api.xiaozhi.me/mcp/?token=' + TOKEN;
 const PYTHON_PATH = '/Users/mihua/.hermes/hermes-agent/venv/bin/python3';
 
@@ -41,10 +41,14 @@ function runStockBackend(action, symbol) {
 
 function connect() {
   let retryCount = 0; // 指数退避计数器
+
   console.log('[' + new Date().toISOString() + '] Connecting to xiaozhi stock MCP...');
   const ws = new WebSocket(ENDPOINT, { rejectUnauthorized: false });
   
-  ws.on('open', () => console.log('[' + new Date().toISOString() + '] Connected!'));
+  ws.on('open', () => { 
+    console.log('[' + new Date().toISOString() + '] Connected!');
+    retryCount = 0; // 连接成功后重置退避计数器
+  });
   ws.on('error', e => { 
     console.log('[' + new Date().toISOString() + '] Error:', e.message); 
     setTimeout(connect, Math.min(5000 * Math.pow(1.5, retryCount), 60000)); 
