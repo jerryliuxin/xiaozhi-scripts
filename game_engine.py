@@ -267,9 +267,12 @@ def record_activity(activity_type, points=None, bonus=0, label="",
 
     # 检查多活动类型奖励（penalty 和 praise 不参与 multi_bonus）
     multi_bonus = 0
-    if activity_type not in ("penalty", "praise"):
+    if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
         multi_bonus = _calc_multi_bonus(data, today)
-    total_earned = points + bonus + multi_bonus
+    
+    # 对于普通活动，total = base + bonus（不含 multi_bonus）
+    # multi_bonus 由 _multi_bonus_applied 记录单独体现
+    total_earned = points + bonus
 
     # 记录
     entry = {
@@ -277,7 +280,7 @@ def record_activity(activity_type, points=None, bonus=0, label="",
         "activity": activity_type,
         "base": points,
         "bonus": bonus,
-        "multi_bonus": multi_bonus,
+        "multi_bonus": multi_bonus if activity_type == "_multi_bonus_applied" else 0,
         "total": total_earned,
         "time": datetime.now().isoformat(),
     }
@@ -409,14 +412,21 @@ def _calc_multi_bonus(data, today):
 def _apply_multi_bonus_marker(data, today, bonus):
     """记录多活动类型奖励标记。
 
+    规则：
+    - 只创建一条独立的 multi_bonus 记录
+    - total = bonus（不是 0！）
+    - 不修改已有历史条目
+    
     参数:
         data: 游戏数据
         today: 今日日期字符串
         bonus: 奖励积分
     """
+    # 检查今天是否已有 multi_bonus 记录
     for entry in data.get("history", []):
         if entry.get("date") == today and entry.get("activity") == "_multi_bonus_applied":
-            entry["multi_bonus"] = bonus
+            # 已有记录，更新 total（之前 total=0 是 bug）
+            entry["total"] = bonus
             return
 
     data["history"].append({
@@ -425,7 +435,7 @@ def _apply_multi_bonus_marker(data, today, bonus):
         "base": 0,
         "bonus": 0,
         "multi_bonus": bonus,
-        "total": 0,
+        "total": bonus,
         "time": datetime.now().isoformat(),
     })
 

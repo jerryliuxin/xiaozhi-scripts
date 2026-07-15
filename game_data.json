@@ -52,7 +52,7 @@
       "base": 0,
       "bonus": 0,
       "multi_bonus": 30,
-      "total": 0,
+      "total": 30,
       "time": "2026-06-14T12:06:17.923408"
     },
     {
@@ -274,14 +274,40 @@
       "multi_bonus": 0,
       "total": 0,
       "time": "2026-06-15T16:38:31.562569"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "unlock",
+      "base": 12,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 12,
+      "time": "2026-07-15T20:39:10.922796"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "mickey_f1",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-15T20:39:10.930206"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-15T20:39:10.936120"
     }
   ],
-  "total_score": 487,
+  "total_score": 529,
   "streak": {
-    "streak_count": 2,
+    "streak_count": 1,
     "streak_dates": [
-      "2026-06-14",
-      "2026-06-15"
+      "2026-07-15"
     ]
   },
   "unlocked_achievements": [
@@ -290,6 +316,6 @@
     "score_100",
     "score_500"
   ],
-  "level": "知识探索家",
-  "score": 487
+  "level": "学习小明星",
+  "score": 529
 }
