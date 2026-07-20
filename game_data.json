@@ -81,8 +81,8 @@
       "activity": "unlock",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:09:03.775600"
     },
     {
@@ -90,8 +90,8 @@
       "activity": "english_quiz",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:09:03.864561"
     },
     {
@@ -99,8 +99,8 @@
       "activity": "exercise_other",
       "base": 0,
       "bonus": 3,
-      "multi_bonus": 30,
-      "total": 33,
+      "multi_bonus": 0,
+      "total": 3,
       "time": "2026-06-14T12:09:04.168135",
       "label": "运动-其他运动"
     },
@@ -139,8 +139,8 @@
       "activity": "unlock",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:14:15.331895"
     },
     {
@@ -148,8 +148,8 @@
       "activity": "english_quiz",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:14:15.420060"
     },
     {
@@ -157,8 +157,8 @@
       "activity": "chore",
       "base": 10,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 40,
+      "multi_bonus": 0,
+      "total": 10,
       "time": "2026-06-14T12:14:16.101262",
       "label": "other",
       "extra": {
@@ -200,8 +200,8 @@
       "activity": "unlock",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:16:08.774427"
     },
     {
@@ -209,8 +209,8 @@
       "activity": "english_quiz",
       "base": 15,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 45,
+      "multi_bonus": 0,
+      "total": 15,
       "time": "2026-06-14T12:16:08.864712"
     },
     {
@@ -218,8 +218,8 @@
       "activity": "chore",
       "base": 10,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 40,
+      "multi_bonus": 0,
+      "total": 10,
       "time": "2026-06-14T12:16:09.518830",
       "label": "other",
       "extra": {
@@ -252,8 +252,8 @@
       "activity": "daily_complete",
       "base": 30,
       "bonus": 0,
-      "multi_bonus": 30,
-      "total": 60,
+      "multi_bonus": 0,
+      "total": 30,
       "time": "2026-06-14T12:16:09.941197",
       "label": "每日任务全完成"
     },
@@ -303,7 +303,7 @@
       "time": "2026-07-15T20:39:10.936120"
     }
   ],
-  "total_score": 529,
+  "total_score": 229,
   "streak": {
     "streak_count": 1,
     "streak_dates": [
@@ -316,6 +316,6 @@
     "score_100",
     "score_500"
   ],
-  "level": "学习小明星",
+  "level": "小学者",
   "score": 529
 }
