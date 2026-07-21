@@ -311,7 +311,7 @@ def record_activity(activity_type, points=None, bonus=0, label="",
         for _db_path in ['/Users/mihua/projects/xiaozhi_admin/backend', os.path.dirname(__file__)]:
             if _db_path not in sys.path:
                 sys.path.insert(0, _db_path)
-        from database import add_activity
+        from database import add_activity, update_score_summary
         _db_found = True
         add_activity(
             activity_type=activity_type,
@@ -324,8 +324,23 @@ def record_activity(activity_type, points=None, bonus=0, label="",
             date_str=today,
             time_val=entry.get("time", datetime.now().isoformat()),
         )
+        # 同步更新 score_summary（总积分、等级、连胜）
+        current_total = data.get("total_score", 0)
+        level = data.get("level", "学习小萌芽")
+        streak_count = data.get("streak", {}).get("streak_count", 0)
+        streak_dates = data.get("streak", {}).get("streak_dates", [])
+        achievements = data.get("achievements", [])
+        special_achievements = data.get("special_achievements", [])
+        update_score_summary(
+            total_score=current_total,
+            level=level,
+            streak_count=streak_count,
+            streak_dates=streak_dates,
+            achievements=achievements,
+            special_achievements=special_achievements,
+        )
     except Exception as e:
-        print(f"写入数据库失败: {e}")
+        print(f"写入数据库或更新score_summary失败: {e}")
     return total_earned
 
 

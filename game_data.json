@@ -301,13 +301,32 @@
       "multi_bonus": 0,
       "total": 0,
       "time": "2026-07-15T20:39:10.936120"
+    },
+    {
+      "date": "2026-07-21",
+      "activity": "unlock",
+      "base": 12,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 12,
+      "time": "2026-07-21T15:49:07.623252"
+    },
+    {
+      "date": "2026-07-21",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-21T15:59:53.489710"
     }
   ],
-  "total_score": 229,
+  "total_score": 256,
   "streak": {
-    "streak_count": 1,
+    "streak_count": 2,
     "streak_dates": [
-      "2026-07-15"
+      "2026-07-21",
+      "2026-07-22"
     ]
   },
   "unlocked_achievements": [
@@ -317,5 +336,5 @@
     "score_500"
   ],
   "level": "小学者",
-  "score": 529
+  "score": 271
 }
