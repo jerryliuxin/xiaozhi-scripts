@@ -135,7 +135,10 @@ def _auto_record(action, bonus=0):
         result = game_engine.record_activity(activity_type, points=base_points, bonus=bonus)
         return result
     except Exception as e:
-        pass
+        import traceback
+        print(f"[AUTO_RECORD ERROR] action={action}, base_points={base_points}, error={e}", file=sys.stderr)
+        traceback.print_exc()
+        return {"error": f"积分记录失败: {str(e)}"}
 
 
 # ============================================================

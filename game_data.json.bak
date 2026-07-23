@@ -321,21 +321,120 @@
       "time": "2026-07-21T15:59:53.489710"
     },
     {
-      "date": "2026-07-22",
+      "date": "2026-07-23",
       "activity": "unlock",
       "base": 15,
       "bonus": 0,
       "multi_bonus": 0,
       "total": 15,
-      "time": "2026-07-22T00:31:23.337044"
+      "time": "2026-07-23T11:44:55.596900"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T11:47:58.505430",
+      "label": "测试"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:03:46.563450",
+      "label": "test_from_cli"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:09:38.121356"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:10:29.502305",
+      "label": "test_unlock"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:10:29.527969",
+      "label": "test_english_quiz"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "math_logic",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:10:29.534913",
+      "label": "test_math_logic"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "_multi_bonus_applied",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 10,
+      "total": 10,
+      "time": "2026-07-23T12:12:25.188734"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:12:25.188743",
+      "label": "test_unlock"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:12:25.215301",
+      "label": "test_english_quiz"
+    },
+    {
+      "date": "2026-07-23",
+      "activity": "math_logic",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-23T12:12:25.222445",
+      "label": "test_math_logic"
     }
   ],
-  "total_score": 271,
+  "total_score": 416,
   "streak": {
-    "streak_count": 2,
+    "streak_count": 3,
     "streak_dates": [
       "2026-07-21",
-      "2026-07-22"
+      "2026-07-22",
+      "2026-07-23"
     ]
   },
   "unlocked_achievements": [
@@ -344,6 +443,6 @@
     "score_100",
     "score_500"
   ],
-  "level": "小学者",
-  "score": 271
+  "level": "知识探索家",
+  "score": 416
 }

@@ -323,10 +323,11 @@
   ],
   "total_score": 256,
   "streak": {
-    "streak_count": 2,
+    "streak_count": 3,
     "streak_dates": [
       "2026-07-21",
-      "2026-07-22"
+      "2026-07-22",
+      "2026-07-23"
     ]
   },
   "unlocked_achievements": [
@@ -335,6 +336,6 @@
     "score_100",
     "score_500"
   ],
-  "level": "小学者",
-  "score": 271
+  "level": "知识探索家",
+  "score": 431
 }

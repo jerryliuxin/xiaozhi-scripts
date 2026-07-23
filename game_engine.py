@@ -431,6 +431,7 @@ def _apply_multi_bonus_marker(data, today, bonus):
     - 只创建一条独立的 multi_bonus 记录
     - total = bonus（不是 0！）
     - 不修改已有历史条目
+    - 必须同步更新 total_score，否则 sum(history[*].total) != total_score
     
     参数:
         data: 游戏数据
@@ -440,8 +441,9 @@ def _apply_multi_bonus_marker(data, today, bonus):
     # 检查今天是否已有 multi_bonus 记录
     for entry in data.get("history", []):
         if entry.get("date") == today and entry.get("activity") == "_multi_bonus_applied":
-            # 已有记录，更新 total（之前 total=0 是 bug）
+            old_total = entry.get("total", 0)
             entry["total"] = bonus
+            data["total_score"] = data.get("total_score", 0) + (bonus - old_total)
             return
 
     data["history"].append({
@@ -453,6 +455,8 @@ def _apply_multi_bonus_marker(data, today, bonus):
         "total": bonus,
         "time": datetime.now().isoformat(),
     })
+    # 同步更新 total_score
+    data["total_score"] = data.get("total_score", 0) + bonus
 
 
 def _get_current_level(total):

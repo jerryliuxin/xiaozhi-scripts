@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 const { execSync } = require('child_process');
 const path = require('path');
 
-const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4MjI3MTgzNCwiZXhwIjoxODEzODI5NDM0fQ.kLWPW06HCzC0pFMlDFBvJvycWFIaLd_DTTNVSqQRPuMTOokcBC-pfXevWM50we1rr_aJi9fvkvSDI76yyOe8_w';
+const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4NDc3MzMzMywiZXhwIjoxODE2MzMwOTMzfQ.3FNU88mmETF2YRElqZgNVCS3XAAd_oir4EB8-SfG3k1W_0sztjb-7vMIcGqgsDXzxcIwTWiUlv1-s3u_wwXJGQ';
 const ENDPOINT = 'wss://api.xiaozhi.me/mcp/?token=' + TOKEN;
 const PYTHON_PATH = '/Users/mihua/.hermes/hermes-agent/venv/bin/python3';
 
