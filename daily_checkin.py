@@ -120,7 +120,12 @@ def checkin(period_id=None):
     data = _load()
     today = date.today().isoformat()
     now = datetime.now()
-    
+
+    # 每日重置：如果今天不是上次打卡日期，重置全打卡标记
+    last_checkin = data.get("last_checkin_date")
+    if last_checkin != today:
+        data["daily_all_claimed"] = False
+
     # 自动检测时段
     if period_id is None:
         period_id, period = _get_current_period()
@@ -192,8 +197,8 @@ def checkin(period_id=None):
         "evening": ("daily_checkin_evening", period["bonus"], "晚打卡"),
     }
     activity_type, checkin_bonus, label = checkin_activity_map.get(period_id, ("daily_checkin", period["bonus"], "打卡"))
-    ge_result = game_engine.record_activity(activity_type, points=checkin_bonus, bonus=streak_bonus + daily_all_bonus, label=label)
-    ge_error = ge_result.get("error", "") if isinstance(ge_result, dict) else ""
+    ge_result = game_engine.record_activity(activity_type, points=checkin_bonus, bonus=streak_bonus + daily_all_bonus, label=label, source="cli")
+    ge_error = ""  # record_activity 返回 int (total_earned)，不是 dict
     
     # 构建回复
     msg = f"✅ 打卡成功！{period['label']}打卡 (+{period['bonus']}分)\n"
@@ -226,7 +231,7 @@ def checkin(period_id=None):
         "today_checkin_count": len(today_all),
         "all_done": all_done,
         "remaining": remaining,
-        "game_engine_recorded": ge_result if isinstance(ge_result, dict) else {},
+        "game_engine_recorded": ge_result,
     }
 
 
@@ -238,6 +243,8 @@ def _calc_checkin_streak(data, today):
     if last is None:
         data["checkin_streak"] = 1
         data["checkin_streak_dates"] = [today]
+        # Bug F fix: 首次打卡也要更新 last_checkin_date，否则 streak 无法超过 1 天
+        data["last_checkin_date"] = today
         return 1, 0
     
     last_date = datetime.strptime(last, "%Y-%m-%d").date()
@@ -252,6 +259,8 @@ def _calc_checkin_streak(data, today):
         if today not in streak_dates:
             streak_dates.append(today)
         data["checkin_streak"] = len(streak_dates)
+        # Bug F fix: 连续打卡也要更新 last_checkin_date，否则 streak 无法超过 2 天
+        data["last_checkin_date"] = today
         
         # 检查里程碑奖励
         bonus = 0

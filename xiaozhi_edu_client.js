@@ -20,7 +20,7 @@ function runEduBackend(action, param = '') {
   try {
     const result = execSync(
       `python3 "${scriptPath}" "${safeAction}" ${safeParam}`,
-      { encoding: 'utf-8', timeout: 15000 }
+      { encoding: 'utf-8', timeout: 15000, env: { ...process.env, XIAOZHI_SOURCE: 'voice' } }
     );
     const parsed = JSON.parse(result);
     if (parsed.error) return `执行提示: ${parsed.error}`;
@@ -35,14 +35,18 @@ function runEduBackend(action, param = '') {
 const TOOLS = [
   // === 核心教育功能 ===
   { name: 'get_unlock_lesson', description: '获取剑桥 Unlock L3 (B1水平) 英语教材的每日教学内容与话题', inputSchema: { type: 'object', properties: { unit: { type: 'string', description: '单元号(1-8)，不填随机' } } } },
-  { name: 'mickey_daily_chat', description: '和米奇(Mickey)进行每日英语对话任务，聊聊F1方程式赛车或今日有趣事实', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mickey_daily_chat', description: '和米奇(Mickey)进行每日英语对话任务，聊聊F1方程式赛车或今日有趣事实。系统自动检测是否达到5分钟，达到后自动给+15分', inputSchema: { type: 'object', properties: {} } },
   { name: 'tell_story_or_song', description: '给小朋友讲故事或科普(科幻冒险、历史探秘、科学探索等五年级以上主题)', inputSchema: { type: 'object', properties: { theme: { type: 'string', description: '主题：科幻冒险, 历史探秘, 科学探索, 成语故事, 睡前科普' } }, required: ['theme'] } },
   { name: 'explain_to_child', description: '运用幼儿教育和青少年家庭教育系统知识，深入浅出地解答小朋友提出的任何"为什么"', inputSchema: { type: 'object', properties: { question: { type: 'string', description: '小朋友提出的问题' } }, required: ['question'] } },
   { name: 'interactive_adventure', description: '开启互动式多分支故事(Choose-Your-Own-Adventure)，让小朋友做决定', inputSchema: { type: 'object', properties: { setting: { type: 'string', description: '场景，例如：太空、恐龙世界、海底探险' } } } },
   { name: 'bilingual_math_logic', description: '双语逻辑与数学小挑战，带F1赛车主题的趣味智力题', inputSchema: { type: 'object', properties: {} } },
   { name: 'positive_reinforcement_praise', description: '运用正面管教(Positive Discipline)技巧，对小朋友的好行为进行具体事实表扬与能力肯定', inputSchema: { type: 'object', properties: { behavior: { type: 'string', description: '家长报告的小朋友具体好行为，例如：自己主动刷牙' } }, required: ['behavior'] } },
   { name: 'english_quiz_game', description: '英语闯关小游戏，答对问题可以获得积分奖励（难度自动根据积分调整）', inputSchema: { type: 'object', properties: { difficulty: { type: 'string', description: '难度：Auto(自动), Easy, Medium, Hard, Expert, Master' } } } },
-  { name: 'chinese_recitation_challenge', description: '语文/国学背书大挑战，背诵正确可获得特殊奖励', inputSchema: { type: 'object', properties: { text_name: { type: 'string', description: '要背诵的课文或诗词名称，例如《静夜思》' } } } },
+  { name: 'chinese_recitation_challenge', description: '语文/国学背书大挑战，背诵正确可获得特殊奖励。系统自动检测是否≥5分钟，达到后自动+15分', inputSchema: { type: 'object', properties: { text_name: { type: 'string', description: '要背诵的课文或诗词名称，例如《静夜思》' } } } },
+  { name: 'composition_practice', description: '练习作文。系统自动检测是否≥5分钟，达到后自动+15分', inputSchema: { type: 'object', properties: {} } },
+  { name: 'record_sports', description: '体育打卡。米奇说运动了直接调用，即时+15分', inputSchema: { type: 'object', properties: {} } },
+  { name: 'record_chores', description: '家务打卡。米奇说做家务了直接调用，即时+15分', inputSchema: { type: 'object', properties: {} } },
+  { name: 'activity_check', description: '检查任意活动是否达到奖励条件（支持: english_conversation, chinese_recitation, composition_practice）', inputSchema: { type: 'object', properties: { type: { type: 'string', description: '活动类型: english_conversation, chinese_recitation, composition_practice', enum: ['english_conversation', 'chinese_recitation', 'composition_practice'] } } } },
 
   // === 积分系统核心 ===
   { name: 'score', description: '查看当前积分、等级、连胜天数、运动/打卡统计和可用奖励', inputSchema: { type: 'object', properties: {} } },
@@ -67,6 +71,7 @@ const TOOLS = [
   { name: 'checkin', description: '每日打卡 — 早/中/晚三个时段自动打卡，连续打卡有额外奖励', inputSchema: { type: 'object', properties: { period: { type: 'string', description: '时段: morning(早), afternoon(中), evening(晚)，不填自动检测' } } } },
   { name: 'checkin_status', description: '查看今日打卡状态和连续打卡天数', inputSchema: { type: 'object', properties: {} } },
   { name: 'checkin_reminder', description: '获取智能打卡提醒（根据当前时段推送）', inputSchema: { type: 'object', properties: {} } },
+  { name: 'english_conversation_check', description: '检查当前英语对话是否超过5分钟（达到后自动给+15分），用来确认英语闯关是否完成', inputSchema: { type: 'object', properties: {} } },
 
   // === 每日挑战 ===
   { name: 'daily_quiz', description: '每日趣味挑战答题（科学/历史/英语/逻辑，15道题库），答对+10分', inputSchema: { type: 'object', properties: { answer: { type: 'string', description: '答案，如 A, B, C' } } } },
@@ -89,7 +94,8 @@ const TOOLS = [
   { name: 'chore', description: '记录家务劳动，米奇做家务后调用', inputSchema: { type: 'object', properties: { chore_name: { type: 'string', description: '家务名称，如：整理书桌、洗碗、倒垃圾' } } } },
   { name: 'positive', description: '记录积极行为（主动学习、自己收拾、分享等）', inputSchema: { type: 'object', properties: { action_type: { type: 'string', description: '行为类型: proactive(主动学习), cleaning(自己收拾), sharing(分享), listening(听指令)', enum: ['proactive', 'cleaning', 'sharing', 'listening'] } } } },
   { name: 'penalty', description: '扣分惩罚（抄袭、说谎、浪费粮食等）', inputSchema: { type: 'object', properties: { penalty_type: { type: 'string', description: '扣分类型: copying(抄袭), lying(说谎), wasting_food(浪费粮食)', enum: ['copying', 'lying', 'wasting_food'] } } } },
-];
+,
+  { name: 'daily_records', description: '查看今日完整记录（打卡/运动/学习/劳动汇总）', inputSchema: { type: 'object', properties: {} } }];
 
 function connect() {
   let retryCount = 0; // 指数退避计数器
@@ -148,7 +154,7 @@ function connect() {
       if (name === 'get_unlock_lesson') {
         text = runEduBackend('unlock', args.unit || '1');
       } else if (name === 'mickey_daily_chat') {
-        text = runEduBackend('mickey_f1');
+        text = runEduBackend('mickey_chat');
       } else if (name === 'tell_story_or_song') {
         text = runEduBackend('story', args.theme || '科幻冒险');
       } else if (name === 'explain_to_child') {
@@ -198,27 +204,12 @@ function connect() {
       // 口语练习
       else if (name === 'speech_practice') {
         const difficulty = args.difficulty || '中级';
-        if (args.completed_count && args.quality) {
-          // 家长确认后评分给分
-          const points = args.completed_count * (args.quality === 'excellent' ? 5 : args.quality === 'good' ? 5 : 3);
-          text = runEduBackend('positive', difficulty); // 先获取难度信息
-          // 手动调用积分记录
-          const scriptPath = path.join(__dirname, 'edu_backend.py');
-          try {
-            const result = execSync(
-              `python3 "${scriptPath}" "speech" "${difficulty}"`,
-              { encoding: 'utf-8', timeout: 15000 }
-            );
-            const parsed = JSON.parse(result);
-            if (parsed.prompt) text = parsed.prompt;
-            else if (parsed.result) text = typeof parsed.result === 'object' ? JSON.stringify(parsed.result, null, 2) : parsed.result;
-            else text = JSON.stringify(parsed, null, 2);
-          } catch(e) {
-            text = runEduBackend('speech', difficulty);
-          }
-        } else {
-          text = runEduBackend('speech', difficulty);
-        }
+        text = runEduBackend('speech', difficulty);
+      }
+      
+      // 每日记录
+      else if (name === 'daily_records') {
+        text = runEduBackend('daily_records');
       } else if (name === 'speech_get_sentence') {
         // 获取单句口语练习
         const scriptPath = path.join(__dirname, 'edu_backend.py');
@@ -259,6 +250,19 @@ function connect() {
         text = runEduBackend('checkin_status');
       } else if (name === 'checkin_reminder') {
         text = runEduBackend('checkin_reminder');
+      }
+      
+      // 活动自动积分
+      else if (name === 'english_conversation_check') {
+        text = runEduBackend('english_conversation_check');
+      } else if (name === 'record_sports') {
+        text = runEduBackend('record_sports');
+      } else if (name === 'record_chores') {
+        text = runEduBackend('record_chores');
+      } else if (name === 'composition_practice') {
+        text = runEduBackend('composition_practice');
+      } else if (name === 'activity_check') {
+        text = runEduBackend('activity_check', args.type || 'english_conversation');
       }
       
       // 每日挑战
@@ -311,7 +315,7 @@ function connect() {
           String(args.cost || 20),
           args.desc || '家长自定义奖励',
           args.category || '其他'
-        ];
+];
         text = runEduBackend('parent_add_reward', parts.join(' '));
       } else if (name === 'parent_set_rules') {
         text = runEduBackend('parent_set_rules', `${args.field} ${args.value}`);

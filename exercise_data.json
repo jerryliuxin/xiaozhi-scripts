@@ -1,6 +1,17 @@
 {
   "history": [
     {
+      "date": "2026-06-09",
+      "exercise": "running",
+      "label": "体育打卡（云端同步）",
+      "duration_minutes": 30,
+      "count": 1,
+      "earned_points": 15,
+      "streak_bonus": 0,
+      "total": 15,
+      "source": "cloud_sync"
+    },
+    {
       "date": "2026-06-14",
       "exercise": "other",
       "label": "其他运动",
@@ -9,21 +20,44 @@
       "earned_points": 3,
       "streak_bonus": 0,
       "total": 3
+    },
+    {
+      "date": "2026-07-24",
+      "exercise": "chore",
+      "label": "家务",
+      "duration_minutes": 0,
+      "count": 1,
+      "earned_points": 0,
+      "streak_bonus": 0,
+      "total": 0,
+      "source": "legacy"
+    },
+    {
+      "date": "2026-07-24",
+      "exercise": "running",
+      "label": "运动",
+      "duration_minutes": 0,
+      "count": 1,
+      "earned_points": 0,
+      "streak_bonus": 0,
+      "total": 0,
+      "source": "legacy"
     }
   ],
   "exercise_streak": 1,
   "exercise_streak_dates": [
     "2026-06-14"
   ],
-  "last_exercise_date": null,
-  "total_sessions": 1,
-  "total_minutes": 15,
+  "last_exercise_date": "2026-07-24",
+  "total_sessions": 4,
+  "total_minutes": 45,
   "exercise_achievements_unlocked": [],
   "daily_checkin_completed": false,
-  "running_count": 0,
+  "running_count": 2,
   "jump_rope_count": 0,
   "ball_count": 0,
   "swimming_count": 0,
   "cycling_count": 0,
-  "other_count": 1
+  "other_count": 1,
+  "chore_count": 1
 }

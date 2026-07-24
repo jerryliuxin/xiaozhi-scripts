@@ -73,7 +73,8 @@ EXERCISE_POINTS = {
     },
     "other": {
         "base": 15,
-        "max_per_day": 3,
+        "max_per_day": 45,
+        "max_count_per_day": 3,
         "label": "其他运动",
     },
 }
@@ -167,7 +168,12 @@ def record_exercise(exercise_type, duration_minutes=0, count=0, label=None):
     
     data = _load()
     today = date.today().isoformat()
-    
+
+    # 每日重置：如果今天不是上次运动日期，重置运动打卡完成标记
+    last_exercise = data.get("last_exercise_date")
+    if last_exercise != today:
+        data["daily_checkin_completed"] = False
+
     # 1. 计算本次运动获得的积分
     earned_points = _calc_exercise_points(data, today, exercise_type, duration_minutes, count, info)
     if isinstance(earned_points, dict) and "error" in earned_points:
@@ -193,7 +199,8 @@ def record_exercise(exercise_type, duration_minutes=0, count=0, label=None):
         f"exercise_{exercise_type}",
         points=0,  # 运动积分单独计算，不通过主系统
         bonus=earned_points + streak_bonus,
-        label=f"运动-{info['label']}"
+        label=f"运动-{info['label']}",
+        source="cli",
     )
     
     # 5. 记录到本地数据
@@ -213,15 +220,16 @@ def record_exercise(exercise_type, duration_minutes=0, count=0, label=None):
     cutoff = (date.today() - timedelta(days=90)).isoformat()
     data["history"] = [e for e in data["history"] if e.get("date", "") >= cutoff]
     
-    _save(data)
-    
-    # 6. 检查运动成就
-    new_achievements = _check_exercise_achievements(data)
-    
     # 7. 检查每日打卡是否完成
     today_exercises = [e for e in data["history"] if e.get("date") == today]
     if today_exercises and not data.get("daily_checkin_completed", False):
         data["daily_checkin_completed"] = True
+    
+    # Bug E fix: daily_checkin_completed 必须在 _save 之前设置，否则不会持久化
+    _save(data)
+    
+    # 6. 检查运动成就
+    new_achievements = _check_exercise_achievements(data)
     
     return {
         "exercise": exercise_type,
@@ -247,6 +255,11 @@ def _calc_exercise_points(data, today, exercise_type, duration_minutes, count, i
     ]
     today_type_points = sum(e.get("earned_points", 0) for e in today_type_entries)
     
+    # Bug D fix: 先检查次数上限（max_count_per_day），再检查分数上限（max_per_day）
+    max_count_per_day = info.get("max_count_per_day")
+    if max_count_per_day is not None and len(today_type_entries) >= max_count_per_day:
+        return {"error": f"{info['label']} 今日已达次数上限（{max_count_per_day}次）"}
+
     max_per_day = info.get("max_per_day", 99)
     if today_type_points >= max_per_day:
         return {"error": f"{info['label']} 今日已达上限（{max_per_day}分）"}
@@ -293,6 +306,8 @@ def _calc_exercise_streak(data, today):
     if last is None:
         data["exercise_streak"] = 1
         data["exercise_streak_dates"] = [today]
+        # Bug G fix: 首次运动也要更新 last_exercise_date，否则 streak 无法超过 1 天
+        data["last_exercise_date"] = today
         return 1, 0
     
     last_date = datetime.strptime(last, "%Y-%m-%d").date()
@@ -322,16 +337,18 @@ def _calc_exercise_streak(data, today):
         # 断联
         missed_days = delta - 1
         if missed_days >= 3:
-            # 断联3天以上重置连胜
+            # 断联3天以上重置连胜（从0开始）
             data["exercise_streak"] = 0
             streak_dates = []
-        elif missed_days == 1:
-            # 断联1天不重置，但也不增加
-            pass
-        
-        data["exercise_streak"] = 1
-        streak_dates = [today]
-    
+        else:
+            # 断联1-2天，重启连胜
+            data["exercise_streak"] = 1
+            streak_dates = [today]
+
+        data["exercise_streak"] = max(data["exercise_streak"], 1)
+        if not streak_dates:
+            streak_dates = [today]
+
     data["exercise_streak_dates"] = streak_dates
     data["last_exercise_date"] = today
     return data["exercise_streak"], 0

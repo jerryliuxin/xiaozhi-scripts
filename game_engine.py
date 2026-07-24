@@ -8,6 +8,10 @@ import sys
 from datetime import datetime, date, timedelta
 from enum import Enum
 import logging
+import sys
+
+if sys.getrecursionlimit() < 10000:
+    sys.setrecursionlimit(10000)
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", level=logging.WARNING
@@ -24,6 +28,18 @@ try:
     import reward_shop
 except ImportError:
     reward_shop = None
+
+try:
+    from database import (
+        add_score_entry, get_total_score as db_get_total_score,
+        get_history as db_get_history,
+        get_daily_count, get_daily_activities, get_global, set_global,
+        add_redemption, rebuild_total_score
+    )
+    _DB_AVAILABLE = True
+except ImportError:
+    _DB_AVAILABLE = False
+
 DATA_FILE = BASE_DIR / "game_data.json"
 DATA_FILE_BACKUP = BASE_DIR / "game_data.json.bak"
 POINTS_CONFIG_FILE = BASE_DIR / "points_config.yaml"
@@ -41,14 +57,17 @@ LEARNING_POINTS = {
     "math_logic":     {"base": 15, "max_per_day": 3, "label": "数学逻辑"},
     "chinese_recite": {"base": 15, "max_per_day": 2, "label": "国学背书"},
     "speech_practice":{"base": 10, "max_per_day": 1, "label": "口语练习"},
+    "composition":    {"base": 15, "max_per_day": 2, "label": "练习作文"},
+    "exercise":       {"base": 15, "max_per_day": 3, "label": "体育打卡"},
+    "chore":          {"base": 15, "max_per_day": 2, "label": "家务打卡"},
 }
 
 CHORE_POINTS = {
-    "clean_room":  {"base": 10, "label": "整理房间"},
-    "dishes":      {"base": 10, "label": "洗碗"},
-    "laundry":     {"base": 10, "label": "洗衣服"},
-    "cook":        {"base": 10, "label": "做饭"},
-    "sweep":       {"base": 10, "label": "扫地"},
+    "clean_room":  {"base": 15, "label": "整理房间"},
+    "dishes":      {"base": 15, "label": "洗碗"},
+    "laundry":     {"base": 15, "label": "洗衣服"},
+    "cook":        {"base": 15, "label": "做饭"},
+    "sweep":       {"base": 15, "label": "扫地"},
 }
 
 POSITIVE_POINTS = {
@@ -78,9 +97,9 @@ ACHIEVEMENTS = [
     {"id": "first_unlock", "name": "初次解锁", "desc": "完成首次英语解锁",
      "check": lambda data: any(e.get("activity") == "unlock" for e in data.get("history", []))},
     {"id": "streak_3", "name": "三日连胜", "desc": "连续学习3天",
-     "check": lambda data: data.get("streak", {}).get("current", 0) >= 3},
+     "check": lambda data: data.get("streak", {}).get("streak_count", 0) >= 3},
     {"id": "streak_7", "name": "七日连胜", "desc": "连续学习7天",
-     "check": lambda data: data.get("streak", {}).get("current", 0) >= 7},
+     "check": lambda data: data.get("streak", {}).get("streak_count", 0) >= 7},
     {"id": "score_100", "name": "百分达人", "desc": "累计达到100分",
      "check": lambda data: data.get("total_score", 0) >= 100},
     {"id": "score_500", "name": "五分大师", "desc": "累计达到500分",
@@ -197,46 +216,62 @@ def get_daily_complete_config() -> dict:
 
 def get_penalty_multiplier(missed_days: int) -> float:
     pm = CONFIG.get("penalty_multiplier", {})
-    for days in sorted(pm.keys()):
+    # 从大到小排序取最后一个匹配：断联越久，系数越低（惩罚越重）
+    sorted_days = sorted(pm.keys(), reverse=True)
+    for days in sorted_days:
         if missed_days >= days:
             return pm[days]
     return 1.0
 
 
 def _load():
-    """Load game data from JSON file."""
-    if not os.path.exists(DATA_FILE):
+    """从 SQLite 加载积分数据。"""
+    if not _DB_AVAILABLE:
         return {}
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data
-    except json.JSONDecodeError:
-        logger.warning("Failed to load game data, using empty data")
+        total = db_get_total_score()
+        history = db_get_history(limit=10000)
+        streak_count = get_global('streak_count', 0)
+        streak_dates = get_global('streak_dates', [])
+        level = get_global('level', '新星')
+        
+        return {
+            'total_score': total,
+            'history': history,
+            'streak': {'streak_count': streak_count, 'streak_dates': streak_dates},
+            'level': level,
+            'score': total,
+        }
+    except Exception as e:
+        import sys
+        logger.warning(f"SQLite load failed: {type(e).__name__}")
         return {}
 
 
 def _save(data):
-    """Save game data to JSON file with backup."""
+    """Save game data to JSON file with backup (atomic write)."""
     try:
         if os.path.exists(DATA_FILE):
             import shutil
             shutil.copy2(DATA_FILE, DATA_FILE_BACKUP)
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
+        tmp_file = DATA_FILE.with_suffix(".json.tmp")
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, DATA_FILE)
     except Exception as e:
         logger.error(f"Failed to save game data: {e}")
 
 
 def record_activity(activity_type, points=None, bonus=0, label="",
-                    extra=None, streak_type="current"):
+                    extra=None, streak_type="current", source="voice", source_id=None, chat_id=None):
     """记录一次活动积分。
-
+    
     积分计算:
     - points = base_points (从 CONFIG 获取)
     - bonus = streak_bonus (连胜奖励)
     - 每日任务完成奖励 (30分)
     - 多活动类型奖励 (10/20/30分)
+    原子写入 SQLite
 
     参数:
         activity_type: 活动类型
@@ -245,6 +280,9 @@ def record_activity(activity_type, points=None, bonus=0, label="",
         label: 活动标签
         extra: 额外数据
         streak_type: 连胜类型
+        source: 来源 (voice|cloud_sync|cli|test)
+        source_id: 来源唯一ID（防重复）
+        chat_id: 关联聊天ID
 
     返回:
         记录的实际积分
@@ -252,37 +290,83 @@ def record_activity(activity_type, points=None, bonus=0, label="",
     if points is None:
         points = get_activity_points(activity_type)
 
-    data = _load()
     today = date.today().isoformat()
 
     # 断联惩罚
-    streak = data.get("streak", {})
-    streak_count = streak.get("streak_count", 0)
-    streak_dates = streak.get("streak_dates", [])
+    if _DB_AVAILABLE:
+        streak_count = get_global('streak_count', 0)
+        streak_dates = get_global('streak_dates', [])
+    else:
+        data = _load()
+        streak = data.get("streak", {})
+        streak_count = streak.get("streak_count", 0)
+        streak_dates = streak.get("streak_dates", [])
+
     if streak_count > 0 and streak_dates:
         last_date = datetime.strptime(streak_dates[-1], "%Y-%m-%d").date()
         missed = (date.today() - last_date).days - 1
         if missed > 0:
             points = int(points * get_penalty_multiplier(missed))
 
-    # 检查多活动类型奖励（penalty 和 praise 不参与 multi_bonus）
-    multi_bonus = 0
-    if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
-        multi_bonus = _calc_multi_bonus(data, today)
-    
-    # 对于普通活动，total = base + bonus（不含 multi_bonus）
-    # multi_bonus 由 _multi_bonus_applied 记录单独体现
-    total_earned = points + bonus
+    # Bug C fix: daily_complete 每日上限1次
+    if activity_type == "daily_complete":
+        daily_complete_count = 0
+        if _DB_AVAILABLE:
+            daily_complete_count = get_daily_count(today, "daily_complete")
+        else:
+            daily_complete_count = sum(
+                1 for e in data.get("history", [])  # noqa
+                if e.get("date") == today and e.get("activity") == "daily_complete"
+            )
+        if daily_complete_count >= 1:
+            logger.info("daily_complete 今日已领取，跳过")
+            return 0
 
-    # 记录
+    total_earned = points + bonus
+    
+    # === 写入 SQLite（主存储） ===
+    if _DB_AVAILABLE:
+        source_id = f"{source}_{activity_type}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+        result = add_score_entry(
+            date_str=today,
+            activity=activity_type,
+            points=total_earned,
+            label=label or '',
+            source=source,
+            source_id=source_id or f"{source}_{activity_type}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+            chat_id=chat_id,
+            extra=extra,
+        )
+        if result.get('duplicate'):
+            logger.info(f"Duplicate entry skipped: {activity_type} on {today}")
+            return 0
+
+        # multi_bonus 计算
+        if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
+            _calc_multi_bonus_db(today)
+
+        # 更新连胜
+        if streak_type == "current":
+            _update_streak_db(today)
+
+        # 更新等级
+        new_total = db_get_total_score()
+        level = _get_current_level(new_total)
+        set_global('level', level)
+
+        return total_earned
+
+    # === 回退到 JSON（无 database.py 时） ===
+    data = _load()
     entry = {
         "date": today,
         "activity": activity_type,
         "base": points,
         "bonus": bonus,
-        "multi_bonus": multi_bonus if activity_type == "_multi_bonus_applied" else 0,
+        "multi_bonus": 0,
         "total": total_earned,
         "time": datetime.now().isoformat(),
+        "source": source,
     }
     if label:
         entry["label"] = label
@@ -294,53 +378,17 @@ def record_activity(activity_type, points=None, bonus=0, label="",
     data["history"].append(entry)
     data["total_score"] = data.get("total_score", 0) + total_earned
 
-    # 更新连胜
+    if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
+        multi_bonus = _calc_multi_bonus(data, today)
+
     if streak_type == "current":
         _update_streak(data, today)
 
-    # 检查成就
     data = _check_achievements(data)
-
     data["level"] = _get_current_level(data.get("total_score", 0))
     data["score"] = data.get("total_score", 0)
     _save(data)
-    # 同时写入数据库
-    try:
-        # 尝试多种路径找到 database 模块
-        _db_found = False
-        for _db_path in ['/Users/mihua/projects/xiaozhi_admin/backend', os.path.dirname(__file__)]:
-            if _db_path not in sys.path:
-                sys.path.insert(0, _db_path)
-        from database import add_activity, update_score_summary
-        _db_found = True
-        add_activity(
-            activity_type=activity_type,
-            base=points,
-            bonus=bonus,
-            multi_bonus=multi_bonus,
-            total=total_earned,
-            label=label,
-            extra=extra,
-            date_str=today,
-            time_val=entry.get("time", datetime.now().isoformat()),
-        )
-        # 同步更新 score_summary（总积分、等级、连胜）
-        current_total = data.get("total_score", 0)
-        level = data.get("level", "学习小萌芽")
-        streak_count = data.get("streak", {}).get("streak_count", 0)
-        streak_dates = data.get("streak", {}).get("streak_dates", [])
-        achievements = data.get("achievements", [])
-        special_achievements = data.get("special_achievements", [])
-        update_score_summary(
-            total_score=current_total,
-            level=level,
-            streak_count=streak_count,
-            streak_dates=streak_dates,
-            achievements=achievements,
-            special_achievements=special_achievements,
-        )
-    except Exception as e:
-        print(f"写入数据库或更新score_summary失败: {e}")
+
     return total_earned
 
 
@@ -359,6 +407,58 @@ def _count_daily_usage(data, today, activity_type):
     return count
 
 
+def _update_streak_db(today):
+    """SQLite 版连胜更新。"""
+    if not _DB_AVAILABLE:
+        return
+    streak_dates = get_global('streak_dates', [])
+    streak_count = get_global('streak_count', 0)
+    
+    if streak_dates and streak_dates[-1] == today:
+        return
+    
+    if streak_dates:
+        last_date = datetime.strptime(streak_dates[-1], "%Y-%m-%d").date()
+        if (date.today() - last_date).days == 1:
+            streak_count += 1
+        else:
+            streak_count = 1
+            streak_dates = []
+    else:
+        streak_count = 1
+    
+    streak_dates.append(today)
+    set_global('streak_dates', streak_dates)
+    set_global('streak_count', streak_count)
+
+
+def _calc_multi_bonus_db(today):
+    """SQLite 版同日多活动奖励计算。"""
+    if not _DB_AVAILABLE:
+        return 0
+    activities = get_daily_activities(today)
+    thresholds = DEFAULT_MULTI_BONUS_THRESHOLDS
+    bonus = 0
+    for threshold, reward in sorted(thresholds.items()):
+        if len(activities) >= threshold:
+            bonus = reward
+    if bonus > 0:
+        # 检查是否已有 multi_bonus
+        existing = get_history(date_from=today, date_to=today, activity='_multi_bonus_applied', limit=1)
+        if existing:
+            old_bonus = existing[0].get('points', 0)
+            if old_bonus != bonus:
+                # 更新 multi_bonus 值（需要重建 total_score）
+                conn = get_conn()
+                conn.execute("DELETE FROM score_ledger WHERE date=? AND activity='_multi_bonus_applied'", (today,))
+                conn.commit()
+                rebuild_total_score()
+                add_score_entry(today, '_multi_bonus_applied', bonus, label='多活动奖励', source='system', source_id=f'multi_{today}')
+        else:
+            add_score_entry(today, '_multi_bonus_applied', bonus, label='多活动奖励', source='system', source_id=f'multi_{today}')
+    return bonus
+
+
 def _update_streak(data, today):
     """Update streak tracking.
 
@@ -366,6 +466,7 @@ def _update_streak(data, today):
     - 如果今天已有记录，不更新连胜
     - 如果昨天有记录，连胜+1
     - 如果昨天没有记录，连胜重置为1
+    - 只有 history 中当天有记录时才更新连胜
 
     参数:
         data: 游戏数据
@@ -376,6 +477,13 @@ def _update_streak(data, today):
 
     if streak_dates and streak_dates[-1] == today:
         return  # 今天已经记录过
+
+    # 检查 history 中今天是否有记录，如果没有则不更新连胜
+    has_today_record = any(
+        e.get("date") == today for e in data.get("history", [])
+    )
+    if not has_today_record:
+        return
 
     if streak_dates:
         last_date = datetime.strptime(streak_dates[-1], "%Y-%m-%d").date()
@@ -410,6 +518,9 @@ def _calc_multi_bonus(data, today):
     activities_today = set()
     for entry in data.get("history", []):
         if entry.get("date") == today and not entry.get("activity", "").startswith("_"):
+            # Bug A fix: praise 和 penalty 不算学习活动类型，跳过统计
+            if entry.get("activity") in ("praise", "penalty"):
+                continue
             activities_today.add(entry.get("activity"))
 
     thresholds = DEFAULT_MULTI_BONUS_THRESHOLDS
@@ -634,6 +745,7 @@ def redeem_reward(reward_id: str) -> dict:
     
     # Deduct score
     data["total_score"] -= cost
+    data["score"] = data["total_score"]
     
     # Record in history
     today = date.today().isoformat()
@@ -651,14 +763,13 @@ def redeem_reward(reward_id: str) -> dict:
     
     _save(data)
     
-    # 写入数据库兑换记录
+    # 使用 SQLite 原子兑换
     try:
-        from database import add_redeemed
-        add_redeemed(
+        from database import add_redemption
+        add_redemption(
             reward_id=item.get("reward_id", reward_id),
             reward_name=item.get("name", ""),
             cost=cost,
-            date_str=today,
         )
     except Exception as e:
         logger.warning(f"Failed to write redemption to DB: {e}")
@@ -677,7 +788,7 @@ def redeem_reward(reward_id: str) -> dict:
             "tts": tts_text,
             "cost": cost,
             "description": item.get("desc", ""),
-            "level": _calculate_level(data["total_score"]) if hasattr(ge, "_calculate_level") else _get_level(data["total_score"]),
+            "level": _get_current_level(data["total_score"]),
             "redeemed_rewards": data.get("redeemed_rewards", [])}
 
 def get_score() -> dict:

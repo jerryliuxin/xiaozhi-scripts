@@ -1,0 +1,17 @@
+{
+  "checkins": [],
+  "last_checkin": null,
+  "checkin_history": [
+    {
+      "date": "2026-07-24",
+      "period": "morning",
+      "period_label": "早上",
+      "bonus": 5,
+      "time": "13:02:31"
+    }
+  ],
+  "checkin_streak": 1,
+  "checkin_streak_dates": [
+    "2026-07-24"
+  ]
+}

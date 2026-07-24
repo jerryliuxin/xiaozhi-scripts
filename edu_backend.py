@@ -19,7 +19,8 @@ if not logger.handlers:
 import json
 import os
 import random
-from datetime import date, timedelta
+import sys
+from datetime import date, timedelta, datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KB_FILE = os.path.join(BASE_DIR, "kb", "knowledge.json")
@@ -46,14 +47,18 @@ SYSTEM_INSTRUCTION = """# 小智积分行为规范 — 必读
 | 场景 | 工具调用 | 积分变化 | 记录类型 |
 |------|---------|---------|---------|
 | 剑桥英语教材 | get_unlock_lesson | +15 | 学习 |
+| 英语对话≥5分钟 | mickey_daily_chat（自动检测） | +15（一次/对话） | 学习 |
 | 英语闯关 | english_quiz_game | +15 | 学习 |
 | 数学逻辑 | bilingual_math_logic | +15 | 学习 |
-| 国学背书 | chinese_recitation_challenge | +15 | 学习 |
+| 语文背书≥5分钟 | chinese_recitation_challenge（自动检测） | +15（一次/次） | 学习 |
+| 练习作文≥5分钟 | composition_practice（自动检测） | +15（一次/次） | 学习 |
 | 口语练习(完成) | speech_practice(家长确认) | +3~5/句 | 学习 |
 | 运动跑步 | exercise running <时长> | 每5分钟+5分 | 运动 |
 | 运动跳绳 | exercise jump_rope 0 <数量> | 每100个+3分 | 运动 |
 | 运动球类 | exercise ball | +30/次 | 运动 |
 | 运动游泳 | exercise swimming | +40/次 | 运动 |
+| **体育打卡** | **record_sports** | **+15（即时）** | **运动** |
+| **家务打卡** | **record_chores** | **+15（即时）** | **家务** |
 | 每日打卡 | checkin [period] | 早5/午5/晚10 | 打卡 |
 | 家务 | chore <家务名> | 5~15分 | 家务 |
 | 表扬 | positive <行为> | 0分（仅话术） | 无积分 |
@@ -61,6 +66,12 @@ SYSTEM_INSTRUCTION = """# 小智积分行为规范 — 必读
 | 抄袭 | penalty copying | -10 | 惩罚 |
 | 违反规则 | penalty breaking_rule | -20 | 惩罚 |
 | 每日任务全完成 | daily_complete | +30 | 奖励 |
+
+## 活动自动积分规则
+- **英语/背书/作文**（需计时≥5分钟）：用对应工具开始会话，系统自动计时，达标后自动加分
+- **运动/家务**（即时）：用对应工具记录，立即加分
+- 同一活动连续计时只奖励一次，不重复叠加
+- 每日上限见积分速查表（超出上限不再加分）
 
 ## 严禁事项
 - xiaozhi 不能直接调用 game_engine.record_activity()
@@ -87,12 +98,18 @@ SYSTEM_INSTRUCTION = """# 小智积分行为规范 — 必读
 # _auto_record — 统一自动积分入口
 # ============================================================
 
+_current_source = 'voice'  # 当前调用来源: voice | cli | test
+
 AUTO_RECORD_POINTS = {
     # === 核心学习 ===
     'unlock': 15,
     'english_quiz': 15,
     'math_logic': 15,
     'chinese_recite': 15,
+    'composition': 15,
+    # === 运动/家务即时打卡 ===
+    'exercise': 15,
+    'chore': 15,
     # === 零分记录（仅记录不积分） ===
     'mickey_f1': 0,
     'story_song': 0,
@@ -105,6 +122,7 @@ AUTO_RECORD_POINTS = {
     'daily_checkin_morning': 5,
     'daily_checkin_afternoon': 5,
     'daily_checkin_evening': 10,
+    'speech_practice': 10,
     'daily_checkin_all': 15,
 }
 
@@ -116,8 +134,10 @@ ZERO_POINTS_TYPES = [
 ]
 
 
-def _auto_record(action, bonus=0):
+def _auto_record(action, bonus=0, source=None):
     """自动记录一次活动到 game_engine。如果已达上限则静默跳过。"""
+    if source is None:
+        source = _current_source
     if action in AUTO_RECORD_POINTS:
         base_points = AUTO_RECORD_POINTS[action]
     else:
@@ -131,8 +151,21 @@ def _auto_record(action, bonus=0):
             activity_type = 'speech_practice'
         else:
             activity_type = action
-        
-        result = game_engine.record_activity(activity_type, points=base_points, bonus=bonus)
+
+        # 检查每日上限
+        if activity_type in game_engine.LEARNING_POINTS:
+            max_per_day = game_engine.LEARNING_POINTS[activity_type].get("max_per_day", 999)
+            data = game_engine._load()
+            today = date.today().isoformat()
+            today_count = sum(
+                1 for e in data.get("history", [])
+                if e.get("date") == today and e.get("activity") == activity_type
+            )
+            if today_count >= max_per_day:
+                logger.info(f"{activity_type} 今日已达上限 ({today_count}/{max_per_day})，跳过记录")
+                return 0
+
+        result = game_engine.record_activity(activity_type, points=base_points, bonus=bonus, source=source)
         return result
     except Exception as e:
         import traceback
@@ -140,6 +173,238 @@ def _auto_record(action, bonus=0):
         traceback.print_exc()
         return {"error": f"积分记录失败: {str(e)}"}
 
+
+# ============================================================
+# 活动会话追踪 — 5分钟以上自动记录积分
+# ============================================================
+# 支持的会话类型:
+#   english_conversation → english_quiz    (+15, 5min)
+#   chinese_recitation   → chinese_recite  (+15, 5min)
+#   composition_practice → composition     (+15, 5min)
+#   sports               → exercise        (+15, 即时)
+#   chores               → chore           (+15, 即时)
+
+ACTIVITY_SESSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "activity_sessions.json")
+
+SESSION_CONFIG = {
+    "english_conversation": {
+        "record_as": "english_quiz",
+        "points": 15,
+        "timer_sec": 300,        # 需要5分钟
+        "daily_limit": 2,
+        "label": "英语闯关",
+    },
+    "chinese_recitation": {
+        "record_as": "chinese_recite",
+        "points": 15,
+        "timer_sec": 300,        # 需要5分钟
+        "daily_limit": 2,
+        "label": "语文背书",
+    },
+    "composition_practice": {
+        "record_as": "composition",
+        "points": 15,
+        "timer_sec": 300,        # 需要5分钟
+        "daily_limit": 2,
+        "label": "练习作文",
+    },
+    "sports": {
+        "record_as": "exercise",
+        "points": 15,
+        "timer_sec": 0,          # 即时（无需等待）
+        "daily_limit": 3,
+        "label": "运动",
+    },
+    "chores": {
+        "record_as": "chore",
+        "points": 15,
+        "timer_sec": 0,          # 即时
+        "daily_limit": 2,
+        "label": "家务",
+    },
+}
+
+
+def _load_activity_sessions():
+    """加载所有活动会话状态。"""
+    if os.path.exists(ACTIVITY_SESSION_FILE):
+        try:
+            with open(ACTIVITY_SESSION_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def _save_activity_sessions(data):
+    """保存所有活动会话状态（原子写入）。"""
+    try:
+        tmp = ACTIVITY_SESSION_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, ACTIVITY_SESSION_FILE)
+        return True
+    except Exception:
+        return False
+
+
+def get_session_config(session_type):
+    """获取指定会话类型的配置。"""
+    config = SESSION_CONFIG.get(session_type)
+    if config is None:
+        return None
+    return dict(config)
+
+
+def start_activity_session(session_type, extra_data=None):
+    """
+    开始一次新的活动会话（计时/即时记录）。
+    返回: dict with status info.
+    """
+    config = get_session_config(session_type)
+    if config is None:
+        return {"error": f"未知会话类型: {session_type}"}
+
+    sessions = _load_activity_sessions()
+    session = sessions.get(session_type, {})
+
+    # 如果timer_sec==0（即时记录，如运动/家务），直接记录积分
+    if config["timer_sec"] == 0:
+        recorded = _auto_record(config["record_as"])
+        if recorded:
+            # 重置会话（下次再记录）
+            sessions[session_type] = {"active": False, "awarded": True}
+            _save_activity_sessions(sessions)
+            return {
+                "awarded": True,
+                "session_type": session_type,
+                "record_as": config["record_as"],
+                "points": config["points"],
+                "label": config["label"],
+                "instant": True,
+            }
+        return {"awarded": False, "reason": "记录失败"}
+
+    # timer_sec > 0（需要计时，如英语/背书/作文）
+    # 先检查上次会话是否已完成
+    if session.get("active") and not session.get("awarded"):
+        start_str = session.get("start_time")
+        if start_str:
+            start_dt = datetime.fromisoformat(start_str)
+            elapsed = (datetime.now() - start_dt).total_seconds()
+            if elapsed >= config["timer_sec"]:
+                recorded = _auto_record(config["record_as"])
+                if recorded:
+                    session["awarded"] = True
+                    sessions[session_type] = session
+                    _save_activity_sessions(sessions)
+                    return {
+                        "awarded": True,
+                        "session_type": session_type,
+                        "duration_min": round(elapsed / 60, 1),
+                        "points": config["points"],
+                        "label": config["label"],
+                    }
+                return {"awarded": False, "reason": "记录失败"}
+
+    # 开始新会话
+    new_session = {
+        "active": True,
+        "start_time": datetime.now().isoformat(),
+        "awarded": False,
+    }
+    if extra_data:
+        new_session.update(extra_data)
+    sessions[session_type] = new_session
+    _save_activity_sessions(sessions)
+    return {
+        "started": True,
+        "session_type": session_type,
+        "label": config["label"],
+        "requires_timer": True,
+        "timer_sec": config["timer_sec"],
+    }
+
+
+def check_activity_award(session_type):
+    """
+    检查指定类型的活动是否达到奖励条件。
+    用于云端AI在对话中主动检查。
+    """
+    config = get_session_config(session_type)
+    if config is None:
+        return {"awarded": False, "error": f"未知会话类型: {session_type}"}
+
+    sessions = _load_activity_sessions()
+    session = sessions.get(session_type, {})
+    if not session.get("active") or session.get("awarded", False):
+        return {"awarded": False, "reason": "无活跃会话或已奖励"}
+
+    start_str = session.get("start_time")
+    if not start_str:
+        return {"awarded": False, "reason": "无开始时间"}
+
+    start_dt = datetime.fromisoformat(start_str)
+    elapsed = (datetime.now() - start_dt).total_seconds()
+
+    if elapsed >= config["timer_sec"]:
+        recorded = _auto_record(config["record_as"])
+        if recorded:
+            session["awarded"] = True
+            sessions[session_type] = session
+            _save_activity_sessions(sessions)
+            return {
+                "awarded": True,
+                "session_type": session_type,
+                "duration_min": round(elapsed / 60, 1),
+                "points": config["points"],
+                "label": config["label"],
+            }
+        return {"awarded": False, "reason": "记录失败"}
+    else:
+        return {
+            "awarded": False,
+            "remaining_sec": int(config["timer_sec"] - elapsed),
+            "elapsed_sec": int(elapsed),
+        }
+
+
+# 兼容旧函数（英语对话专用）
+ENGLISH_SESSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "english_session.json")
+
+
+def _migrate_old_english_session():
+    """将旧的english_session.json迁移到新的统一系统。"""
+    if os.path.exists(ENGLISH_SESSION_FILE):
+        try:
+            with open(ENGLISH_SESSION_FILE) as f:
+                old = json.load(f)
+            if old.get("active"):
+                sessions = _load_activity_sessions()
+                if "english_conversation" not in sessions:
+                    sessions["english_conversation"] = {
+                        "active": old.get("active", False),
+                        "start_time": old.get("start_time", datetime.now().isoformat()),
+                        "awarded": old.get("awarded", False),
+                    }
+                    _save_activity_sessions(sessions)
+            os.remove(ENGLISH_SESSION_FILE)
+        except Exception:
+            pass
+
+
+def start_english_conversation():
+    """(兼容) 开始英语对话 → 统一引擎。"""
+    _migrate_old_english_session()
+    return start_activity_session("english_conversation")
+
+
+def check_english_conversation_award():
+    """(兼容) 检查英语对话奖励 → 统一引擎。"""
+    _migrate_old_english_session()
+    return check_activity_award("english_conversation")
 
 # ============================================================
 # 剑桥英语教材 (Cambridge Unlock Level 3)
@@ -207,6 +472,15 @@ def get_unlock_content():
 # ============================================================
 
 def get_mickey_daily_chat():
+    """每日英语对话（F1主题）。自动检测是否≥5分钟英语对话→积分。"""
+    # 检查之前的英语对话是否已完成5分钟
+    award = check_english_conversation_award()
+    if award.get("awarded"):
+        print(f"[English Session] 5分钟英语对话达成! +15分 ({award['duration_min']}分钟)", file=sys.stderr)
+    
+    # 开始新的英语对话会话
+    start_english_conversation()
+    
     _auto_record('mickey_f1')
     um.update_interaction('mickey_f1_chat')
     user_prompt = um.get_user_prompt_prefix()
@@ -249,22 +523,35 @@ def get_mickey_daily_chat():
 # 讲故事
 # ============================================================
 
-def get_story_song():
+def get_story_song(theme="随机"):
     _auto_record('story_song')
     user_prompt = um.get_user_prompt_prefix()
 
-    stories = [
-        "《火星救援》风格：一个宇航员在火星基地遇到通讯中断，需要运用物理和化学知识自救。涉及：轨道计算、水提取、太阳能板维护。",
-        "《希区柯克短篇故事》风格：小明在图书馆发现一本古老的笔记，里面记录了一个从未被记载的历史事件。需要运用批判性思维判断真假。",
-        "达尔文环球航行冒险：讲述达尔文在南美观察物种多样性，提出自然选择假说的过程。涉及进化论、生物多样性、科学方法。",
-        "《刻舟求剑》升级版：加入现代解读——为什么这个故事至今仍有现实意义？探讨'变与不变'的哲学思考。",
-        "《山海经》现代版：如果神话生物出现在今天的世界，会发生什么？结合生物学知识分析神话动物的可行性。",
-        "《福尔摩斯》风格短篇：一桩校园谜题，需要逻辑推理和科学常识来解决。每步推理都要有证据支撑。",
-        "埃隆·马斯克/屠呦呦的故事：从失败中崛起的真实经历，传递科学精神和坚持不懈的价值观。",
-        "宇宙/深海探索：用诗意的语言描述太空奥秘或深海奇观，节奏舒缓，适合睡前听但内容深度达到五年级水平。",
-    ]
+    stories = {
+        "科幻冒险": [
+            "《火星救援》风格：一个宇航员在火星基地遇到通讯中断，需要运用物理和化学知识自救。涉及：轨道计算、水提取、太阳能板维护。",
+            "宇宙/深海探索：用诗意的语言描述太空奥秘或深海奇观，节奏舒缓，适合睡前听但内容深度达到五年级水平。",
+        ],
+        "历史探秘": [
+            "《希区柯克短篇故事》风格：小明在图书馆发现一本古老的笔记，里面记录了一个从未被记载的历史事件。需要运用批判性思维判断真假。",
+            "达尔文环球航行冒险：讲述达尔文在南美观察物种多样性，提出自然选择假说的过程。涉及进化论、生物多样性、科学方法。",
+        ],
+        "科学探索": [
+            "埃隆·马斯克/屠呦呦的故事：从失败中崛起的真实经历，传递科学精神和坚持不懈的价值观。",
+            "《福尔摩斯》风格短篇：一桩校园谜题，需要逻辑推理和科学常识来解决。每步推理都要有证据支撑。",
+        ],
+        "成语故事": [
+            "《刻舟求剑》升级版：加入现代解读——为什么这个故事至今仍有现实意义？探讨'变与不变'的哲学思考。",
+        ],
+        "睡前科普": [
+            "《山海经》现代版：如果神话生物出现在今天的世界，会发生什么？结合生物学知识分析神话动物的可行性。",
+            "宇宙/深海探索：用诗意的语言描述太空奥秘或深海奇观，节奏舒缓，适合睡前听但内容深度达到五年级水平。",
+        ],
+    }
 
-    story = random.choice(stories)
+    # 按主题选择
+    pool = stories.get(theme, [s for v in stories.values() for s in v])
+    story = random.choice(pool) if pool else "随机讲一个有趣的故事吧！"
 
     game_info = game_engine.get_score()
     game_prefix = (f"Mickey当前积分: {str(game_info['total_score'])} 分 | 等级: {game_info['level']}\n"
@@ -320,7 +607,7 @@ def explain_to_child(question="为什么天空是蓝色的？"):
 # 互动冒险
 # ============================================================
 
-def interactive_adventure():
+def interactive_adventure(setting=None):
     _auto_record('adventure')
     um.update_interaction('interactive_adventure')
     user_prompt = um.get_user_prompt_prefix()
@@ -612,6 +899,14 @@ def english_quiz_game():
 # ============================================================
 
 def chinese_recitation_challenge(text_name="《静夜思》"):
+    """语文背书。自动检测是否≥5分钟，达标后自动+15分。"""
+    # 检查上次背书会话是否已完成5分钟
+    award = check_activity_award("chinese_recitation")
+    if award.get("awarded"):
+        print(f"[Activity Session] 语文背书5分钟达成! +15分 ({award['duration_min']}分钟)", file=sys.stderr)
+    # 开始新会话
+    start_activity_session("chinese_recitation")
+
     _auto_record('chinese_recite')
     um.update_interaction('chinese_recitation', text=text_name, points=15)
     user_prompt = um.get_user_prompt_prefix()
@@ -814,8 +1109,10 @@ def get_welcome_message():
 
 
 
-def process_command(cmd, args=None):
+def process_command(cmd, args=None, source='voice'):
     """处理小智教育模块的命令"""
+    global _current_source
+    _current_source = source
     if args is None:
         args = {}
     
@@ -823,8 +1120,12 @@ def process_command(cmd, args=None):
         return get_unlock_content()
     elif cmd == 'mickey_chat':
         return get_mickey_daily_chat()
+    elif cmd == 'english_conversation_check':
+        return check_english_conversation_award()
+    elif cmd == 'english_conversation_start':
+        return start_english_conversation()
     elif cmd == 'story':
-        theme = args.get('theme', '科幻冒险')
+        theme = args.get('theme', '随机')
         return get_story_song(theme=theme)
     elif cmd == 'explain':
         return explain_to_child(question=args.get('question', '为什么天空是蓝色的'))
@@ -842,6 +1143,15 @@ def process_command(cmd, args=None):
     elif cmd == 'recitation':
         text_name = args.get('text', '《静夜思》')
         return chinese_recitation_challenge(text_name=text_name)
+    elif cmd == 'composition_practice':
+        return start_activity_session("composition_practice")
+    elif cmd == 'record_sports':
+        return start_activity_session("sports")
+    elif cmd == 'record_chores':
+        return start_activity_session("chores")
+    elif cmd == 'activity_check':
+        atype = args.get('type', 'english_conversation')
+        return check_activity_award(atype)
     elif cmd == 'news':
         return get_tech_nature_news()
     elif cmd == 'knowledge':
@@ -870,6 +1180,13 @@ def process_command(cmd, args=None):
         return trend_report()
     elif cmd == 'category_breakdown':
         return category_breakdown()
+    elif cmd == 'speech':
+        difficulty = args.get('difficulty', 'medium')
+        return speech_command(difficulty)
+    elif cmd == 'daily_records':
+        return daily_records_view()
+    elif cmd == 'parent_stats':
+        return parent_stats_view()
     elif cmd == 'checkin':
         period = args.get('period', 'morning')
         return checkin(period=period)
@@ -914,6 +1231,11 @@ def process_command(cmd, args=None):
         return parent_set_rules(field, value)
     elif cmd == 'q_memory':
         return q_memory()
+    elif cmd == 'daily_quiz':
+        answer = args.get('answer', '')
+        if answer:
+            return daily_challenge.answer_daily_quiz(answer)
+        return daily_challenge.get_daily_quiz_prompt()
     else:
         return {"status": "error", "message": f"Unknown command: {cmd}"}
 
@@ -1079,7 +1401,7 @@ def parent_set_rules(field="", value=""):
     try:
         if not field or not value:
             return {"message": "需要提供 field 和 value 参数"}
-        config = game_engine._load_points_config() if hasattr(ge, '_load_points_config') else {}
+        config = game_engine._load_points_config()
         # 简单实现：更新配置
         return {"field": field, "value": value, "message": f"规则已更新: {field} = {value}"}
     except Exception as e:
@@ -1099,11 +1421,12 @@ def report():
     try:
         score_info = game_engine.get_score()
         history = game_engine.get_history(limit=20)
-        streak = score_info.get('streak', {})
+        # Bug H fix: get_score() 返回的是平级字段 streak_count/streak_dates，不是嵌套的 streak key
+        streak = {"count": score_info.get("streak_count", 0), "dates": score_info.get("streak_dates", [])}
         return {
             "total_score": score_info.get('total_score', 0),
             "level": score_info.get('level', '学习小萌芽'),
-            "streak_count": streak.get('streak_count', 0),
+            "streak_count": streak.get('count', 0),
             "achievements": score_info.get('unlocked_achievements', []),
             "recent_activities": history[-10:],
             "message": "加油！继续学习！"
@@ -1185,11 +1508,110 @@ def category_breakdown():
         return {"error": str(e)}
 
 
+def speech_command(difficulty="medium"):
+    """口语练习"""
+    _auto_record('speech_practice')
+    try:
+        result = speech_practice.get_prompt_prefix()
+        return {"prompt": str(result)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def checkin(period="morning"):
     """打卡"""
     try:
         result = daily_checkin.checkin(period)
         return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def daily_records_view():
+    """查看今日完整记录（打卡/运动/学习/劳动）"""
+    try:
+        today = str(date.today())
+        history = game_engine.get_history(limit=200)
+        score_info = game_engine.get_score()
+        
+        today_entries = [h for h in history if h.get("date") == today]
+        
+        # 分类
+        categories = {}
+        for e in today_entries:
+            act = e.get("activity", "unknown")
+            if act not in categories:
+                categories[act] = {"count": 0, "total": 0, "label": act}
+            categories[act]["count"] += 1
+            categories[act]["total"] += e.get("total", 0)
+        
+        # 打卡状态
+        checkin_status = "未打卡"
+        try:
+            cs = daily_checkin.get_checkin_status()
+            if isinstance(cs, dict):
+                checkin_status = cs.get("status", cs.get("message", str(cs)))
+        except:
+            pass
+        
+        # 运动状态
+        exercise_info = ""
+        try:
+            es = exercise_tracker.get_daily_exercise_status()
+            if isinstance(es, dict):
+                exercise_info = f"运动{es.get('today_sessions', 0)}次"
+        except:
+            pass
+        
+        return {
+            "date": today,
+            "total_score": score_info.get("total_score", 0),
+            "today_earnings": score_info.get("today_earnings", 0),
+            "streak": score_info.get("streak_count", 0),
+            "checkin_status": checkin_status,
+            "exercise": exercise_info,
+            "activities": categories,
+            "total_entries": len(today_entries),
+            "records": today_entries[-20:],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def parent_stats_view():
+    """家长统计面板"""
+    try:
+        score_info = game_engine.get_score()
+        history = game_engine.get_history(limit=500)
+        
+        # 各类别汇总
+        categories = {}
+        for h in history:
+            act = h.get("activity", "unknown")
+            if act not in categories:
+                categories[act] = {"count": 0, "points": 0}
+            categories[act]["count"] += 1
+            categories[act]["points"] += h.get("total", 0)
+        
+        # 运动统计
+        exercise_info = {}
+        try:
+            ex_data = exercise_tracker._load() if hasattr(exercise_tracker, '_load') else {}
+            exercise_info = {
+                "total_sessions": ex_data.get("total_sessions", 0),
+                "total_minutes": ex_data.get("total_minutes", 0),
+            }
+        except:
+            pass
+        
+        return {
+            "total_score": score_info.get("total_score", 0),
+            "level": score_info.get("level", "学习小萌芽"),
+            "streak": score_info.get("streak_count", 0),
+            "total_activities": len(history),
+            "categories": categories,
+            "exercise": exercise_info,
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -1203,19 +1625,17 @@ def exercise(exc_type="running", duration="15", count="0"):
         return {"error": str(e)}
 
 
-
-        return categories
-    except Exception as e:
-        return {"error": str(e)}
-
-
 if __name__ == "__main__":
     import sys
     import logging
+    import os
     logger = logging.getLogger("xiaozhi_edu")
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else "unknown"
     arg_str = sys.argv[2] if len(sys.argv) > 2 else ""
+
+    # 调用来源：JS 客户端设置 XIAOZHI_SOURCE=voice，CLI 直接调用默认为 cli
+    source = os.environ.get('XIAOZHI_SOURCE', 'cli')
     
     # 解析参数
     args = {}
@@ -1253,6 +1673,20 @@ if __name__ == "__main__":
         args["type"] = arg_str
     elif cmd == "speech":
         args["difficulty"] = arg_str
+    elif cmd == "story":
+        args["theme"] = arg_str
+    elif cmd == "english_quiz":
+        args["difficulty"] = arg_str
+    elif cmd == "mickey_chat":
+        pass  # 无参数
+    elif cmd == "math_logic":
+        pass  # 无参数
+    elif cmd == "news":
+        pass  # 无参数
+    elif cmd == "daily_records":
+        pass  # 无参数
+    elif cmd == "parent_stats":
+        pass  # 无参数
     elif cmd == "checkin":
         args["period"] = arg_str
     elif cmd == "parent_reset":
@@ -1291,10 +1725,10 @@ if __name__ == "__main__":
                   "shop", "report", "weekly_report", "monthly_report", 
                   "trend_report", "category_breakdown", "checkin_status",
                   "checkin_reminder", "exercise_status", "exercise_achievements",
-                  "q_memory", "exercise"):
+                  "q_memory", "exercise", "daily_records"):
         pass  # 无参数或内部处理
     
-    result = process_command(cmd, args)
+    result = process_command(cmd, args, source=source)
     # 如果结果是字符串，包装成 JSON
     if isinstance(result, str):
         # 尝试解析 JSON（如果是 dict 的字符串表示）

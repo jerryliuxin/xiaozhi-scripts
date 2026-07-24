@@ -51,10 +51,13 @@ def record_chore(chore_name):
             chore_type = standard
             break
 
-    result = game_engine.record_chore(chore_type)
-    result["chore_name"] = chore_name
-    result["phrase"] = random.choice(CHORE_PHRASES)
-    return result
+    earned = game_engine.record_chore(chore_type)
+    return {
+        "points": earned if isinstance(earned, (int, float)) else 0,
+        "chore_name": chore_name,
+        "phrase": random.choice(CHORE_PHRASES).format(points=earned if isinstance(earned, (int, float)) else 0),
+        "status": "ok"
+    }
 
 
 def get_chore_list():

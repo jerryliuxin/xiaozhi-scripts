@@ -61,10 +61,12 @@ def _load_config():
 
 
 def _save_config(config):
-    """保存自定义配置。"""
+    """保存自定义配置（原子写入）。"""
     try:
-        with open(REWARD_CONFIG_FILE, "w", encoding="utf-8") as f:
+        tmp_file = REWARD_CONFIG_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, REWARD_CONFIG_FILE)
     except Exception:
         pass
 
@@ -138,16 +140,11 @@ Mickey当前积分: {total} | 等级: {level}
 
 def redeem_reward(reward_id, parent_confirmed=False):
     """兑换奖励（需要家长确认）。
-
+    
     流程：
     1. 查找奖励
-    2. 家长确认检查
-    3. 验证 total_score >= cost
-    4. 扣减 total_score
-    5. 在 history 中添加一条 "redeemed_{reward_id}" 条目（total 为负数）
-    6. 记录兑换历史（兑换日期、奖励名称、消耗积分）
-    7. 持久化到 game_data.json 和 config
-    8. 返回结果
+    2. 家长确认检查  
+    3. 使用 SQLite 原子事务：扣分 + 记录兑换
     """
     from datetime import datetime as _dt
 
@@ -184,11 +181,28 @@ def redeem_reward(reward_id, parent_confirmed=False):
             "have": total,
         }
 
-    # 扣减积分（直接操作 game_data.json）
+    # 使用 SQLite 原子兑换（优先）
+    try:
+        from database import add_redemption, get_total_score
+        result = add_redemption(reward_id, reward["name"], reward["cost"])
+        if result.get('ok'):
+            remaining = get_total_score()
+            return {
+                "success": True,
+                "reward": reward["name"],
+                "cost": reward["cost"],
+                "description": reward["desc"],
+                "remaining": remaining,
+                "level": game_engine._get_current_level(remaining),
+                "message": f"🎉 成功兑换！{reward['name']} - 消耗{reward['cost']}分，剩余{remaining}分",
+            }
+    except Exception:
+        pass
+
+    # 回退到 JSON 方式
     data = game_engine._load()
     data["total_score"] = max(0, data["total_score"] - reward["cost"])
 
-    # 在 history 中添加一条 "redeemed_{reward_id}" 条目（total 为负数，等于 -cost）
     now_str = _dt.now().strftime("%H:%M:%S")
     history_entry = {
         "date": date.today().isoformat(),
@@ -205,7 +219,6 @@ def redeem_reward(reward_id, parent_confirmed=False):
     }
     data["history"].append(history_entry)
 
-    # 记录兑换到 redeemed_rewards
     record = {
         "reward_id": reward_id,
         "name": reward["name"],
@@ -216,7 +229,6 @@ def redeem_reward(reward_id, parent_confirmed=False):
     data.setdefault("redeemed_rewards", []).append(record)
     game_engine._save(data)
 
-    # 记录到配置（持久化）
     config.setdefault("redemption_log", []).append(record)
     _save_config(config)
 

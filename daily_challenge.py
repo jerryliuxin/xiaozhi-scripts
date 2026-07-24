@@ -178,27 +178,21 @@ def answer_daily_quiz(answer):
     is_correct = answer.strip().upper() == correct_answer
 
     if is_correct:
-        # 答对：记录积分
-        result = game_engine.record_activity(
+        # 答对：记录积分 — record_activity 返回 int，不直接当 dict 用
+        earned = game_engine.record_activity(
             "daily_quiz",
             points=10,
             label="每日趣味问答"
         )
-        if "error" in result:
-            return {
-                "correct": True,
-                "correct_answer": correct_answer,
-                "question": quiz["question"],
-                "explanation": quiz["explanation"],
-                "error": result["error"],
-                "note": "积分已达今日上限",
-            }
-        result["correct"] = True
-        result["correct_answer"] = correct_answer
-        result["question"] = quiz["question"]
-        result["explanation"] = quiz["explanation"]
-        result["message"] = f"答对了！正确答案是 {correct_answer}！+10分！🎉"
-        return result
+        # earned 是 int（积分值），构建返回 dict
+        return {
+            "correct": True,
+            "correct_answer": correct_answer,
+            "question": quiz["question"],
+            "explanation": quiz["explanation"],
+            "points_earned": earned,
+            "message": f"答对了！正确答案是 {correct_answer}！+10分！🎉"
+        }
     else:
         return {
             "correct": False,
@@ -212,13 +206,15 @@ def answer_daily_quiz(answer):
 
 def mark_daily_complete():
     """标记每日任务全部完成，发放额外奖励。"""
-    result = game_engine.record_activity(
+    earned = game_engine.record_activity(
         "daily_complete",
         points=game_engine.DAILY_COMPLETE_BONUS,
         label="每日任务全完成"
     )
-    result["message"] = f"太棒了！所有挑战都完成了！额外奖励 {game_engine.DAILY_COMPLETE_BONUS} 分！🎉"
-    return result
+    return {
+        "points_earned": earned,
+        "message": f"太棒了！所有挑战都完成了！额外奖励 {game_engine.DAILY_COMPLETE_BONUS} 分！🎉"
+    }
 
 
 if __name__ == "__main__":

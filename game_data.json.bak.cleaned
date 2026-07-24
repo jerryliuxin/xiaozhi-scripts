@@ -1,0 +1,681 @@
+{
+  "history": [
+    {
+      "date": "2026-06-14",
+      "activity": "test_cli",
+      "base": 4,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 4,
+      "time": "2026-06-14T11:42:54.661666",
+      "label": "CLI测试"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:01:50.473811"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:02:47.161046"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:06:17.109911"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:06:17.199874"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "_multi_bonus_applied",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 30,
+      "total": 30,
+      "time": "2026-06-14T12:06:17.923408"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:06:17.923414"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": -5,
+      "time": "2026-06-14T12:06:18.013216",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:09:03.775600"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:09:03.864561"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "exercise_other",
+      "base": 0,
+      "bonus": 3,
+      "multi_bonus": 0,
+      "total": 3,
+      "time": "2026-06-14T12:09:04.168135",
+      "label": "运动-其他运动"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:09:04.604511"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": -5,
+      "time": "2026-06-14T12:09:04.693318",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:09:05.147428"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:14:15.331895"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:14:15.420060"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "chore",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-06-14T12:14:16.101262",
+      "label": "other",
+      "extra": {
+        "chore_type": "other"
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:14:16.189312"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": -5,
+      "time": "2026-06-14T12:14:16.282766",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:14:16.660666"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:16:08.774427"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-06-14T12:16:08.864712"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "chore",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-06-14T12:16:09.518830",
+      "label": "other",
+      "extra": {
+        "chore_type": "other"
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:16:09.609630"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "penalty",
+      "base": -5,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": -5,
+      "time": "2026-06-14T12:16:09.699737",
+      "extra": {
+        "penalty_type": ""
+      }
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "daily_complete",
+      "base": 30,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 30,
+      "time": "2026-06-14T12:16:09.941197",
+      "label": "每日任务全完成"
+    },
+    {
+      "date": "2026-06-14",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-14T12:16:10.103468"
+    },
+    {
+      "date": "2026-06-15",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-06-15T16:38:31.562569"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "unlock",
+      "base": 12,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 12,
+      "time": "2026-07-15T20:39:10.922796"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "mickey_f1",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-15T20:39:10.930206"
+    },
+    {
+      "date": "2026-07-15",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-15T20:39:10.936120"
+    },
+    {
+      "date": "2026-07-21",
+      "activity": "unlock",
+      "base": 12,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 12,
+      "time": "2026-07-21T15:49:07.623252"
+    },
+    {
+      "date": "2026-07-21",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-21T15:59:53.489710"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "speech_practice",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-07-24T13:01:11.247720"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "chore",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-07-24T13:01:12.673607",
+      "label": "整理房间",
+      "extra": {
+        "chore_type": "clean_room"
+      }
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:14.162951"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "_multi_bonus_applied",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 10,
+      "total": 30,
+      "time": "2026-07-24T13:01:19.783328"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:19.783337"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:19.810065"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "adventure",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:21.329372"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "daily_complete",
+      "base": 30,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 30,
+      "time": "2026-07-24T13:01:22.870393",
+      "label": "每日任务全完成"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "daily_complete",
+      "base": 30,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 30,
+      "time": "2026-07-24T13:01:24.323634",
+      "label": "每日任务全完成"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:33.310482"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.865673"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.893755"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.900793"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.907421"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.914592"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.921227"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.928052"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:34.934871"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:41.513725"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:41.542965"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:41.550906"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:01:41.558655"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "adventure",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:02:25.733484"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "speech_practice",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-07-24T13:02:25.764645"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "unlock",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-24T13:02:31.031059"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "story_song",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:02:31.060098"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "math_logic",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-24T13:02:31.068224"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "english_quiz",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-24T13:02:31.077256"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "chinese_recite",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-24T13:02:31.087949"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "news_topic",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:02:31.098359"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "knowledge",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:02:31.105244"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "daily_checkin_morning",
+      "base": 5,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 5,
+      "time": "2026-07-24T13:02:31.114282",
+      "label": "早打卡"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "chore",
+      "base": 15,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 15,
+      "time": "2026-07-24T13:02:31.122169",
+      "label": "整理房间",
+      "extra": {
+        "chore_type": "clean_room"
+      }
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "praise",
+      "base": 0,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 0,
+      "time": "2026-07-24T13:02:31.129792"
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "penalty",
+      "base": -10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": -10,
+      "time": "2026-07-24T13:02:31.136768",
+      "label": "抄写",
+      "extra": {
+        "penalty_type": "copying"
+      }
+    },
+    {
+      "date": "2026-07-24",
+      "activity": "speech_practice",
+      "base": 10,
+      "bonus": 0,
+      "multi_bonus": 0,
+      "total": 10,
+      "time": "2026-07-24T13:02:31.145595"
+    }
+  ],
+  "total_score": 456,
+  "streak": {
+    "streak_count": 4,
+    "streak_dates": [
+      "2026-07-21",
+      "2026-07-22",
+      "2026-07-23",
+      "2026-07-24"
+    ]
+  },
+  "unlocked_achievements": [
+    "first_unlock",
+    "first_redeem",
+    "score_100",
+    "score_500"
+  ],
+  "level": "知识探索家",
+  "score": 456
+}

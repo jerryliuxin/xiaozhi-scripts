@@ -1,4 +1,18 @@
 {
-  "checkins": [],
-  "last_checkin": null
+  "checkin_history": [
+    {
+      "date": "2026-07-24",
+      "period": "evening",
+      "period_label": "晚上",
+      "bonus": 10,
+      "time": "23:55:45"
+    }
+  ],
+  "checkin_streak": 1,
+  "checkin_streak_dates": [
+    "2026-07-24"
+  ],
+  "last_checkin_date": "2026-07-24",
+  "achievements_unlocked": [],
+  "daily_all_claimed": false
 }
