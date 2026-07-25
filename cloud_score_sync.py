@@ -425,8 +425,12 @@ def sync(dry_run=False, force_full=False, single_chat=None):
                 if not cfg:
                     continue
                 
-                # 检查是否已记录
-                existing_count = has_activity_on_date(game_data, date_str, act)
+                # 检查是否已记录（优先用 SQLite）
+                try:
+                    from database import get_daily_count
+                    existing_count = get_daily_count(date_str, act)
+                except ImportError:
+                    existing_count = has_activity_on_date(game_data, date_str, act)
                 if existing_count >= cfg['max_per_day']:
                     print(f"    ⏭️  {act} 已达每日上限 ({existing_count}/{cfg['max_per_day']})")
                     stats['skipped'] += 1
@@ -518,7 +522,12 @@ def verify_and_fix():
     
     for date_str in sorted(cloud_activities.keys()):
         for act, cloud_count in cloud_activities[date_str].items():
-            local_count = has_activity_on_date(game_data, date_str, act)
+            # 查询数据库中的实际记录数（而非从 JSON 读取）
+            try:
+                from database import get_daily_count
+                local_count = get_daily_count(date_str, act)
+            except ImportError:
+                local_count = has_activity_on_date(game_data, date_str, act)
             cfg = ACTIVITY_CONFIG.get(act, {})
             max_per_day = cfg.get('max_per_day', 999)
             points = cfg.get('points', 15)

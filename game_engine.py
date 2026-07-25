@@ -354,6 +354,9 @@ def record_activity(activity_type, points=None, bonus=0, label="",
         level = _get_current_level(new_total)
         set_global('level', level)
 
+        # 同步 JSON 备份（从 SQLite 重建）
+        _save(_load())
+
         return total_earned
 
     # === 回退到 JSON（无 database.py 时） ===
