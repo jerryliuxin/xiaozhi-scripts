@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 const { execSync } = require('child_process');
 const path = require('path');
 
-const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4NDc3MzMzMywiZXhwIjoxODE2MzMwOTMzfQ.3FNU88mmETF2YRElqZgNVCS3XAAd_oir4EB8-SfG3k1W_0sztjb-7vMIcGqgsDXzxcIwTWiUlv1-s3u_wwXJGQ';
+const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4NTA1NjM2MywiZXhwIjoxODE2NjEzOTYzfQ.5bxH7FX7qYYUTIeX3s1zuyfyTUrdk93DQ843YRrHgFkoPmW88MQlkX5Zs_luPRZnP_wP6isNDfBOu3tBpWeHLw';
 const ENDPOINT = 'wss://api.xiaozhi.me/mcp/?token=' + TOKEN;
 
 // Sanitize shell arguments to prevent injection
@@ -94,14 +94,14 @@ const TOOLS = [
   { name: 'chore', description: '记录家务劳动，米奇做家务后调用', inputSchema: { type: 'object', properties: { chore_name: { type: 'string', description: '家务名称，如：整理书桌、洗碗、倒垃圾' } } } },
   { name: 'positive', description: '记录积极行为（主动学习、自己收拾、分享等）', inputSchema: { type: 'object', properties: { action_type: { type: 'string', description: '行为类型: proactive(主动学习), cleaning(自己收拾), sharing(分享), listening(听指令)', enum: ['proactive', 'cleaning', 'sharing', 'listening'] } } } },
   { name: 'penalty', description: '扣分惩罚（抄袭、说谎、浪费粮食等）', inputSchema: { type: 'object', properties: { penalty_type: { type: 'string', description: '扣分类型: copying(抄袭), lying(说谎), wasting_food(浪费粮食)', enum: ['copying', 'lying', 'wasting_food'] } } } },
-,
+
   { name: 'daily_records', description: '查看今日完整记录（打卡/运动/学习/劳动汇总）', inputSchema: { type: 'object', properties: {} } }];
 
 function connect() {
   let retryCount = 0; // 指数退避计数器
 
   console.log('[' + new Date().toISOString() + '] Connecting to xiaozhi edu MCP...');
-  const ws = new WebSocket(ENDPOINT, { rejectUnauthorized: false });
+  const ws = new WebSocket(ENDPOINT);
   
   ws.on('open', () => { 
     console.log('[' + new Date().toISOString() + '] Connected!');
@@ -112,8 +112,13 @@ function connect() {
     setTimeout(connect, Math.min(5000 * Math.pow(1.5, retryCount), 60000)); 
     retryCount = Math.min((retryCount || 0) + 1, 20);
   });
-  ws.on('close', () => { 
-    console.log('[' + new Date().toISOString() + '] Closed, reconnecting...'); 
+  ws.on('close', (code, reason) => { 
+    const reasonStr = (reason || '').toString();
+    console.log('[' + new Date().toISOString() + '] Closed: code=' + code + ' reason=' + reasonStr);
+    // 4004 Internal server error — 服务端拒绝连接，大幅增加重试间隔
+    if (code === 4004) {
+      retryCount = Math.max(retryCount || 0, 10);  // 跳到 ~27秒
+    }
     setTimeout(connect, Math.min(5000 * Math.pow(1.5, retryCount), 60000)); 
     retryCount = Math.min((retryCount || 0) + 1, 20);
   });
