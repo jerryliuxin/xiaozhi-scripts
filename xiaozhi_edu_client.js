@@ -106,6 +106,22 @@ function connect() {
   ws.on('open', () => { 
     console.log('[' + new Date().toISOString() + '] Connected!');
     retryCount = 0; // 连接成功后重置退避计数器
+    // 主动心跳：30s 发 ws 协议级 ping（RFC6455，对端 ws 库自动回 pong，与 MCP 协议无关）
+    // 若连续一个周期没收到 pong → 连接半死，强制 terminate 触发重连
+    ws._hbAlive = true;
+    ws.on('pong', () => { ws._hbAlive = true; });
+    ws._hb = setInterval(() => {
+      try {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        if (ws._hbAlive === false) {
+          console.log('[' + new Date().toISOString() + '] Heartbeat timeout, force reconnect');
+          try { ws.terminate(); } catch (e) {}
+          return;
+        }
+        ws._hbAlive = false;
+        ws.ping();
+      } catch (e) {}
+    }, 30000);
   });
   ws.on('error', e => { 
     console.log('[' + new Date().toISOString() + '] Error:', e.message); 
@@ -113,6 +129,7 @@ function connect() {
     retryCount = Math.min((retryCount || 0) + 1, 20);
   });
   ws.on('close', (code, reason) => { 
+    if (ws._hb) { clearInterval(ws._hb); ws._hb = null; }
     const reasonStr = (reason || '').toString();
     console.log('[' + new Date().toISOString() + '] Closed: code=' + code + ' reason=' + reasonStr);
     // 4004 Internal server error — 服务端拒绝连接，大幅增加重试间隔
@@ -124,6 +141,7 @@ function connect() {
   });
   
   ws.on('message', raw => {
+    try { if (ws._hbAlive !== undefined) ws._hbAlive = true; } catch (e) {}
     let msg;
     try { msg = JSON.parse(raw); } catch(e) { return; }
     
