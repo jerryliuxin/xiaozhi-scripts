@@ -166,6 +166,9 @@ def evaluate_and_score(completed_count, quality="good"):
         label=f"口语练习（{completed_count}句，{quality}）"
     )
     
+    # record_activity 返回 int（实际入账积分）；0 表示当日已达上限/重复被拒
+    earned = result if isinstance(result, int) else (result.get("points_earned", 0) if isinstance(result, dict) else 0)
+    
     # 选择鼓励语
     pool = ENCOURAGEMENTS.get(
         "优秀" if quality == "excellent" else 
@@ -173,11 +176,14 @@ def evaluate_and_score(completed_count, quality="good"):
         "需要改进",
         ENCOURAGEMENTS["良好"]
     )
-    result["message"] = random.choice(pool)
-    result["completed_sentences"] = completed_count
-    result["quality"] = quality
-    result["points_per_sentence"] = points_per_sentence.get(quality, 5)
-    return result
+    return {
+        "status": "ok",
+        "points_earned": earned,
+        "message": random.choice(pool),
+        "completed_sentences": completed_count,
+        "quality": quality,
+        "points_per_sentence": points_per_sentence.get(quality, 5),
+    }
 
 
 def get_ongoing_challenge():

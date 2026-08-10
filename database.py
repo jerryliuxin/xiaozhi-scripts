@@ -268,7 +268,16 @@ def get_daily_activities(date_str: str) -> set:
         WHERE date = ? AND activity NOT IN ('praise', 'penalty', '_redeem', '_multi_bonus_applied')
           AND activity NOT LIKE '\_%'
     """, (date_str,)).fetchall()
-    return {r['activity'] for r in rows}
+    activities = {r['activity'] for r in rows}
+    # Bug V 修复：exercise_* 子类型（exercise_running/jump_rope/ball/swimming/cycling/other）
+    # 归并为一种 "exercise"，避免同日跑/跳/游被算作 3 种活动虚假触发 multi_bonus
+    normalized = set()
+    for a in activities:
+        if a.startswith("exercise_"):
+            normalized.add("exercise")
+        else:
+            normalized.add(a)
+    return normalized
 
 
 # ═══════════════════════════════════════════════════

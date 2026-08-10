@@ -32,13 +32,23 @@ except ImportError:
 try:
     from database import (
         add_score_entry, get_total_score as db_get_total_score,
-        get_history as db_get_history,
+        get_history as db_get_history, get_conn,
         get_daily_count, get_daily_activities, get_global, set_global,
         add_redemption, rebuild_total_score
     )
     _DB_AVAILABLE = True
 except ImportError:
     _DB_AVAILABLE = False
+    add_score_entry = None
+    db_get_total_score = None
+    db_get_history = None
+    get_conn = None
+    get_daily_count = None
+    get_daily_activities = None
+    get_global = None
+    set_global = None
+    add_redemption = None
+    rebuild_total_score = None
 
 DATA_FILE = BASE_DIR / "game_data.json"
 DATA_FILE_BACKUP = BASE_DIR / "game_data.json.bak"
@@ -131,9 +141,9 @@ def set_config_path(path):
     POINTS_CONFIG_FILE = Path(path)
 
 
-def _load_points_config() -> dict:
+def _load_points_config(force_reload: bool = False) -> dict:
     global _LOADED_CONFIG, CONFIG, STREAK_BONUSES, DAILY_COMPLETE_BONUS, DEFAULT_MULTI_BONUS_THRESHOLDS
-    if _LOADED_CONFIG is not None:
+    if _LOADED_CONFIG is not None and not force_reload:
         return _LOADED_CONFIG
     _LOADED_CONFIG = _get_default_config()
     if POINTS_CONFIG_FILE.exists():
@@ -145,11 +155,35 @@ def _load_points_config() -> dict:
                 _LOADED_CONFIG = cfg
         except Exception:
             pass
+    _refresh_config_globals()
+    return _LOADED_CONFIG
+
+
+def _save_points_config() -> bool:
+    """持久化当前配置到 points_config.yaml（含备份）"""
+    try:
+        import yaml
+        POINTS_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        if POINTS_CONFIG_FILE.exists():
+            import shutil
+            shutil.copy2(POINTS_CONFIG_FILE, POINTS_CONFIG_FILE.with_suffix(".yaml.bak"))
+        tmp_file = POINTS_CONFIG_FILE.with_suffix(".yaml.tmp")
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(_LOADED_CONFIG, f, allow_unicode=True, sort_keys=False)
+        os.replace(tmp_file, POINTS_CONFIG_FILE)
+        _refresh_config_globals()
+        return True
+    except Exception:
+        return False
+
+
+def _refresh_config_globals():
+    """将配置同步到模块级全局（CONFIG/STREAK_BONUSES 等）"""
+    global CONFIG, STREAK_BONUSES, DAILY_COMPLETE_BONUS, DEFAULT_MULTI_BONUS_THRESHOLDS
     CONFIG = _LOADED_CONFIG
     STREAK_BONUSES = CONFIG.get("streak_bonuses", {3: 5, 7: 10, 14: 15, 30: 20})
     DAILY_COMPLETE_BONUS = CONFIG.get("daily_complete", {}).get("points", DEFAULT_DAILY_COMPLETE_BONUS)
     DEFAULT_MULTI_BONUS_THRESHOLDS = CONFIG.get("multi_bonus_thresholds", {3: 10, 4: 20, 5: 30})
-    return _LOADED_CONFIG
 
 
 def _get_default_config() -> dict:
@@ -322,6 +356,21 @@ def record_activity(activity_type, points=None, bonus=0, label="",
             logger.info("daily_complete 今日已领取，跳过")
             return 0
 
+    # 通用每日上限：LEARNING_POINTS 中定义 max_per_day 的活动直接调用时也生效
+    # （防止 speech_practice/daily_quiz 等绕过 _auto_record 的调用路径无限刷分）
+    if _DB_AVAILABLE:
+        limit_info = _get_activity_info(activity_type)
+        if limit_info and limit_info.get("max_per_day"):
+            used = get_daily_count(today, activity_type)
+            if used >= limit_info["max_per_day"]:
+                logger.info("%s 今日已达上限 (%d/%d)，跳过", activity_type, used, limit_info["max_per_day"])
+                return 0
+    # daily_quiz 每日最多 1 次（不在 LEARNING_POINTS，单独限制）
+    if _DB_AVAILABLE and activity_type == "daily_quiz":
+        if get_daily_count(today, "daily_quiz") >= 1:
+            logger.info("daily_quiz 今日已回答过，跳过")
+            return 0
+
     total_earned = points + bonus
     
     # === 写入 SQLite（主存储） ===
@@ -345,8 +394,8 @@ def record_activity(activity_type, points=None, bonus=0, label="",
         if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
             _calc_multi_bonus_db(today)
 
-        # 更新连胜
-        if streak_type == "current":
+        # 更新连胜（仅正分学习活动；praise/mickey_f1/story_song 等 0 分闲聊不触发）
+        if streak_type == "current" and total_earned > 0:
             _update_streak_db(today)
 
         # 更新等级
@@ -384,7 +433,7 @@ def record_activity(activity_type, points=None, bonus=0, label="",
     if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
         multi_bonus = _calc_multi_bonus(data, today)
 
-    if streak_type == "current":
+    if streak_type == "current" and total_earned > 0:
         _update_streak(data, today)
 
     data = _check_achievements(data)
@@ -446,8 +495,8 @@ def _calc_multi_bonus_db(today):
         if len(activities) >= threshold:
             bonus = reward
     if bonus > 0:
-        # 检查是否已有 multi_bonus
-        existing = get_history(date_from=today, date_to=today, activity='_multi_bonus_applied', limit=1)
+        # 检查是否已有 multi_bonus（注意：必须用 db_get_history，模块级 get_history(limit=100) 不支持筛选参数）
+        existing = db_get_history(date_from=today, date_to=today, activity='_multi_bonus_applied', limit=1)
         if existing:
             old_bonus = existing[0].get('points', 0)
             if old_bonus != bonus:
@@ -713,7 +762,53 @@ def get_daily_tasks():
     return tasks
 
 
-def redeem_reward(reward_id: str) -> dict:
+def deduct_redeem(reward_id: str, reward_name: str, cost: int, parent_confirmed: bool = False) -> dict:
+    """权威兑换入口（统一账本 game_data.db）。
+
+    语音/CLI 与后端 API 都应走此函数完成扣分，避免双库各扣一次导致套利。
+    - parent_confirmed=False 且该奖励需要家长确认 → 返回 need_parent_confirmation，不扣分
+    返回 {'status', 'remaining_score', ...}
+    """
+    if not _DB_AVAILABLE:
+        return {"status": "error", "message": "数据库不可用"}
+    data = _load()
+    if data.get("total_score", 0) < cost:
+        return {"status": "error", "message": f"积分不足: {data.get('total_score', 0)} / {cost}"}
+
+    if not parent_confirmed:
+        # 客户端需先上传家长确认
+        return {
+            "status": "need_parent_confirmation",
+            "reward_id": reward_id,
+            "reward_name": reward_name,
+            "cost": cost,
+            "message": "需要家长确认后才能兑换",
+        }
+
+    # 权威扣分（SQLite 事务内完成）
+    try:
+        from database import add_redemption
+        result = add_redemption(reward_id=reward_id, reward_name=reward_name, cost=cost)
+        if not result.get("ok"):
+            # add_redemption 对 IntegrityError 返回 ok=False 而非抛异常，必须显式检查
+            return {"status": "error", "message": result.get("error", "兑换失败")}
+    except Exception as e:
+        logger.warning(f"兑换写入失败: {e}")
+        return {"status": "error", "message": f"兑换失败: {e}"}
+
+    # 同步 JSON 备份（从 SQLite 重建，包含扣分流水）
+    _save(_load())
+
+    return {
+        "status": "ok",
+        "remaining_score": _load().get("total_score", 0),
+        "reward_name": reward_name,
+        "cost": cost,
+        "level": _get_current_level(_load().get("total_score", 0)),
+    }
+
+
+def redeem_reward(reward_id: str, parent_confirmed: bool = False) -> dict:
     """Redeem reward item. Deducts score from total. 优先从数据库查商店配置。"""
     data = _load()
     
@@ -743,56 +838,36 @@ def redeem_reward(reward_id: str) -> dict:
         return {"status": "error", "message": f"Reward {reward_id} not found"}
     
     cost = item.get("cost", 0)
+    reward_name = item.get("name", reward_id)
     if data.get("total_score", 0) < cost:
         return {"status": "error", "message": f"Insufficient score: {data.get('total_score', 0)} / {cost}"}
-    
-    # Deduct score
-    data["total_score"] -= cost
-    data["score"] = data["total_score"]
-    
-    # Record in history
-    today = date.today().isoformat()
-    data["history"].append({
-        "date": today,
-        "activity": "_redeemed_reward",
-        "base": -cost,
-        "bonus": 0,
-        "multi_bonus": 0,
-        "total": -cost,
-        "time": datetime.now().isoformat(),
-        "reward_name": item.get("name", reward_id),
-        "cost": cost,
-    })
-    
-    _save(data)
-    
-    # 使用 SQLite 原子兑换
-    try:
-        from database import add_redemption
-        add_redemption(
-            reward_id=item.get("reward_id", reward_id),
-            reward_name=item.get("name", ""),
-            cost=cost,
-        )
-    except Exception as e:
-        logger.warning(f"Failed to write redemption to DB: {e}")
-    
+
+    # 统一走权威扣分入口（SQLite 事务 + JSON 备份重建）
+    result = deduct_redeem(
+        reward_id=item.get("reward_id", reward_id),
+        reward_name=reward_name,
+        cost=cost,
+        parent_confirmed=parent_confirmed,
+    )
+    if result.get("status") != "ok":
+        return result
+
     # TTS feedback
     tts_text = ""
     try:
         import tts_helper as th
         if hasattr(th, "redeem_tts"):
-            tts_text = th.redeem_tts(item.get("name", reward_id), cost)
+            tts_text = th.redeem_tts(reward_name, cost)
     except ImportError:
         pass
     
-    return {"status": "ok", "remaining_score": data["total_score"],
-            "reward_name": item.get("name", reward_id),
+    return {"status": "ok", "remaining_score": result["remaining_score"],
+            "reward_name": reward_name,
             "tts": tts_text,
             "cost": cost,
             "description": item.get("desc", ""),
-            "level": _get_current_level(data["total_score"]),
-            "redeemed_rewards": data.get("redeemed_rewards", [])}
+            "level": result.get("level", _get_current_level(result["remaining_score"])),
+            "redeemed_rewards": []}
 
 def get_score() -> dict:
     """获取完整积分信息。"""

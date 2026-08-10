@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const WebSocket = require('ws');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const path = require('path');
 
 const TOKEN='eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQxMjY4NSwiYWdlbnRJZCI6NTA1NTYzLCJlbmRwb2ludElkIjoiYWdlbnRfNTA1NTYzIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc4NTA1NjM2MywiZXhwIjoxODE2NjEzOTYzfQ.5bxH7FX7qYYUTIeX3s1zuyfyTUrdk93DQ843YRrHgFkoPmW88MQlkX5Zs_luPRZnP_wP6isNDfBOu3tBpWeHLw';
@@ -226,21 +226,21 @@ function connect() {
       
       // 口语练习
       else if (name === 'speech_practice') {
-        const difficulty = args.difficulty || '中级';
-        text = runEduBackend('speech', difficulty);
+        const sParts = [args.difficulty || '中级'];
+        if (args.completed_count != null) sParts.push(String(args.completed_count));
+        if (args.quality) sParts.push(String(args.quality));
+        text = runEduBackend('speech', sParts.join(' '));
       }
       
       // 每日记录
       else if (name === 'daily_records') {
         text = runEduBackend('daily_records');
       } else if (name === 'speech_get_sentence') {
-        // 获取单句口语练习
-        const scriptPath = path.join(__dirname, 'edu_backend.py');
+        // 获取单句口语练习（防命令注入：execFileSync 参数数组，不拼 shell）
+        const scriptPath = path.join(__dirname, 'speech_practice.py');
         try {
-          const result = execSync(
-            `python3 -c "import sys; sys.path.insert(0, '.'); import speech_practice as sp; print(sp.get_sentence('${args.difficulty || '中级'}'))"`,
-            { encoding: 'utf-8', cwd: __dirname, timeout: 5000 }
-          );
+          const pyCode = "import sys; sys.path.insert(0, '.'); import speech_practice as sp; print(sp.get_sentence(sys.argv[1]))";
+          const result = execFileSync('python3', ['-c', pyCode, String(args.difficulty || '中级')], { encoding: 'utf-8', cwd: __dirname, timeout: 5000 });
           text = result.trim();
         } catch(e) {
           text = '获取句子失败';
@@ -292,13 +292,10 @@ function connect() {
       else if (name === 'daily_quiz') {
         // 提交答案或获取题目
         if (args.answer) {
-          // 提交答案：调用 answer_daily_quiz 核对答案并记录积分
+          // 提交答案：调用 answer_daily_quiz 核对答案并记录积分（防命令注入：execFileSync 参数数组）
           const scriptPath = path.join(__dirname, 'edu_backend.py');
           try {
-            const result = execSync(
-              `python3 "${scriptPath}" "daily_quiz" "${args.answer}"`,
-              { encoding: 'utf-8', cwd: __dirname, timeout: 15000 }
-            );
+            const result = execFileSync('python3', [scriptPath, 'daily_quiz', String(args.answer)], { encoding: 'utf-8', cwd: __dirname, timeout: 15000 });
             const parsed = JSON.parse(result);
             text = parsed.message || JSON.stringify(parsed, null, 2);
             if (parsed.correct) {

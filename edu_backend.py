@@ -1182,7 +1182,9 @@ def process_command(cmd, args=None, source='voice'):
         return category_breakdown()
     elif cmd == 'speech':
         difficulty = args.get('difficulty', 'medium')
-        return speech_command(difficulty)
+        completed_count = args.get('completed_count')
+        quality = args.get('quality', 'good')
+        return speech_command(difficulty, completed_count, quality)
     elif cmd == 'daily_records':
         return daily_records_view()
     elif cmd == 'parent_stats':
@@ -1362,7 +1364,8 @@ def penalty(ptype="copying"):
 def redeem(reward_id="", parent_confirmed="yes"):
     """兑换奖励"""
     try:
-        result = game_engine.redeem_reward(reward_id)
+        confirmed = str(parent_confirmed).strip().lower() in ("yes", "true", "1", "y")
+        result = game_engine.redeem_reward(reward_id, parent_confirmed=confirmed)
         return result
     except Exception as e:
         return {"error": str(e)}
@@ -1397,13 +1400,56 @@ def parent_add_reward(name, cost, desc, category="其他"):
 
 
 def parent_set_rules(field="", value=""):
-    """修改积分规则"""
+    """修改积分规则（真持久化到 points_config.yaml）
+
+    支持的 field：
+    - activities.<activity>.points / daily_limit
+    - streak_bonuses.<days>
+    - multi_bonus_thresholds.<n>
+    - daily_complete.points / daily_complete.required_activities
+    - penalty_multiplier.<days>
+    例如 field="activities.unlock.points" value="20"
+    """
     try:
         if not field or not value:
             return {"message": "需要提供 field 和 value 参数"}
-        config = game_engine._load_points_config()
-        # 简单实现：更新配置
-        return {"field": field, "value": value, "message": f"规则已更新: {field} = {value}"}
+        # 强制重载，避免修改基于缓存旧值丢失
+        config = game_engine._load_points_config(force_reload=True)
+
+        # 解析点分路径 field（支持 a.b.c）
+        keys = field.split(".")
+        target = config
+        for k in keys[:-1]:
+            if not isinstance(target, dict) or k not in target:
+                return {"error": f"规则路径不存在: {field}"}
+            target = target[k]
+        leaf_key = keys[-1]
+        # 兼容 YAML 数字 key（如 streak_bonuses 的 3 是 int，路径里是 str "3"）
+        if isinstance(target, dict) and leaf_key not in target:
+            # 尝试数字 key
+            numeric_keys = [k for k in target if isinstance(k, (int, float)) and str(k) == leaf_key]
+            if numeric_keys:
+                leaf_key = numeric_keys[0]
+        if not isinstance(target, dict) or leaf_key not in target:
+            return {"error": f"规则字段不存在: {field}"}
+
+        # 尝试类型转换（整数/列表）
+        try:
+            if isinstance(target[leaf_key], int):
+                new_val = int(value)
+            elif isinstance(target[leaf_key], float):
+                new_val = float(value)
+            elif isinstance(target[leaf_key], list):
+                new_val = value.split(",") if "," in value else [v.strip() for v in value.split()]
+            else:
+                new_val = value
+        except (ValueError, TypeError):
+            new_val = value
+        target[leaf_key] = new_val
+
+        if game_engine._save_points_config():
+            return {"field": field, "value": new_val, "message": f"规则已更新: {field} = {new_val}"}
+        return {"error": "配置写入失败"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -1508,10 +1554,22 @@ def category_breakdown():
         return {"error": str(e)}
 
 
-def speech_command(difficulty="medium"):
-    """口语练习"""
-    _auto_record('speech_practice')
+def speech_command(difficulty="medium", completed_count=None, quality="good"):
+    """口语练习
+
+    - 仅 difficulty: 生成练习 prompt
+    - 带 completed_count: 家长确认完成句数 → 调用 evaluate_and_score 计分
+    """
     try:
+        if completed_count is not None:
+            result = speech_practice.evaluate_and_score(int(completed_count), quality)
+            if isinstance(result, dict):
+                return {"status": result.get("status", "ok"), "points_earned": result.get("points_earned", 0),
+                        "message": result.get("message", ""), "completed_sentences": result.get("completed_sentences", completed_count),
+                        "quality": result.get("quality", quality)}
+            return {"status": "ok", "result": str(result)}
+        # 无 completed_count → 生成练习 prompt
+        _auto_record('speech_practice')
         result = speech_practice.get_prompt_prefix()
         return {"prompt": str(result)}
     except Exception as e:
@@ -1672,7 +1730,14 @@ if __name__ == "__main__":
     elif cmd == "penalty":
         args["type"] = arg_str
     elif cmd == "speech":
-        args["difficulty"] = arg_str
+        parts = arg_str.split() if arg_str else ["中级"]
+        args["difficulty"] = parts[0]
+        if len(parts) >= 2:
+            args["completed_count"] = parts[1]
+        if len(parts) >= 3:
+            args["quality"] = parts[2]
+    elif cmd == "activity_check":
+        args["type"] = arg_str or "english_conversation"
     elif cmd == "story":
         args["theme"] = arg_str
     elif cmd == "english_quiz":
@@ -1725,7 +1790,10 @@ if __name__ == "__main__":
                   "shop", "report", "weekly_report", "monthly_report", 
                   "trend_report", "category_breakdown", "checkin_status",
                   "checkin_reminder", "exercise_status", "exercise_achievements",
-                  "q_memory", "exercise", "daily_records"):
+                  "q_memory", "exercise", "daily_records",
+                  "record_sports", "record_chores", "composition_practice",
+                  "english_conversation_check", "mickey_chat", "math_logic",
+                  "news", "speech_get_sentence"):
         pass  # 无参数或内部处理
     
     result = process_command(cmd, args, source=source)
