@@ -1,0 +1,14 @@
+# Log files — never commit runtime logs (historically broke pushes at >100MB)
+*.log
+*.log.*
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime state
+game_data.db
+*.db
+*.db-wal
+*.db-shm
