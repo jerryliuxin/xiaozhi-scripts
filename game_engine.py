@@ -8,7 +8,6 @@ import sys
 from datetime import datetime, date, timedelta
 from enum import Enum
 import logging
-import sys
 
 if sys.getrecursionlimit() < 10000:
     sys.setrecursionlimit(10000)
@@ -431,7 +430,7 @@ def record_activity(activity_type, points=None, bonus=0, label="",
     data["total_score"] = data.get("total_score", 0) + total_earned
 
     if activity_type not in ("penalty", "praise", "_multi_bonus_applied"):
-        multi_bonus = _calc_multi_bonus(data, today)
+        _calc_multi_bonus(data, today)
 
     if streak_type == "current" and total_earned > 0:
         _update_streak(data, today)
@@ -647,7 +646,6 @@ def _check_achievements(data):
     返回:
         更新后的游戏数据
     """
-    new = []
     unlocked_achievements = data.get("unlocked_achievements", [])
 
     for ach in ACHIEVEMENTS:
@@ -674,17 +672,15 @@ def _check_achievements(data):
     return data
 
 
-def _check_streak_achievement(data, count):
+def _check_streak_achievement(data):
     """检查连胜成就。
 
     参数:
         data: 游戏数据
-        count: 连胜次数
 
     返回:
         游戏数据（更新后）
     """
-    new = []
     unlocked_achievements = data.get("unlocked_achievements", [])
 
     for ach in ACHIEVEMENTS:
