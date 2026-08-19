@@ -25,6 +25,7 @@ import os
 import sys
 import json
 import re
+import time
 import requests
 from datetime import datetime, timedelta, date
 
@@ -117,9 +118,33 @@ def fetch_all_chats(session, base_url, page_size=100):
             page += 1
         except Exception as e:
             print(f"⚠️  请求异常: {e}")
+            if len(all_chats) == 0:
+                _retry_fetch_all(session, base_url, page_size, all_chats, e)
             break
     
     return all_chats
+
+
+def _retry_fetch_all(session, base_url, page_size, all_chats, first_err, attempts=3):
+    """对瞬时网络/SSL 故障做退避重试, 避免一次抖动把在线数据误判为 0 条。"""
+    for i in range(1, attempts + 1):
+        time.sleep(2 * i)
+        try:
+            r = session.get(
+                f"{base_url}/api/chats/list",
+                params={'page': 1, 'pageSize': page_size},
+                timeout=15
+            )
+            if r.status_code == 200:
+                data = r.json()
+                chats = data.get('data', {}).get('list') or []
+                all_chats.extend(chats)
+                print(f"🔁 重试第 {i} 次成功, 拉取到 {len(chats)} 条聊天")
+                return
+            print(f"🔁 重试第 {i} 次, 状态码 {r.status_code}")
+        except Exception as e:
+            print(f"🔁 重试第 {i} 次异常: {e}")
+    print(f"❌ 网络重试 {attempts} 次仍失败, 首次异常: {first_err}")
 
 
 def fetch_chat_messages(session, base_url, chat_id, max_pages=5):
